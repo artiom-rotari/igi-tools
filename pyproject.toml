@@ -1,0 +1,29 @@
+[project]
+name = "igi"
+version = "0.0.0"
+description = "Reverse engineering tools for 'Project IGI' game"
+readme = "README.md"
+authors = [
+    { name = "artiom.rotari", email = "artiom.rotari@ebs-integrator.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "typer>=0.16.0",
+]
+
+[project.scripts]
+igi = "igi.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+lint = [
+    "ruff>=0.12.0",
+]
+
+[tool.ruff]
+line-length = 120
+lint.select = ["ALL"]
+lint.ignore = ["D", "COM812"]
