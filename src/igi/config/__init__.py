@@ -1,6 +1,8 @@
 from pathlib import Path
+from typing import Self
 
 from pydantic_settings import BaseSettings
+from rich import print
 
 settings_file: Path = Path("igi.json")
 
@@ -10,12 +12,12 @@ class Settings(BaseSettings):
     work_dir: Path | None = Path()
 
     @classmethod
-    def load(cls):
+    def load(cls) -> Self:
         with settings_file.open() as fp:
             return cls.model_validate_json(fp.read())
 
     @classmethod
-    def dump(cls):
+    def dump(cls) -> None:
         if settings_file.exists():
             print("Settings file already exists")
             return
