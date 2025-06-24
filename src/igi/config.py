@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Self
 
 from pydantic_settings import BaseSettings
-from rich import print
 
 settings_file: Path = Path("igi.json")
 

@@ -2,10 +2,10 @@ from pathlib import Path
 
 from typer import Typer
 
-from ..config import Settings
-from .models import QVM
+from igi.config import Settings
+from igi.qvm.models import QVM
 
-app = Typer(name="igi_qvm", add_completion=False)
+app = Typer(add_completion=False, short_help="Submodule with QVM commands")
 
 
 @app.command(short_help="Convert .qvm to .qsc file")

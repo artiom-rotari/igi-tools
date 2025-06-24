@@ -4,20 +4,10 @@ from zipfile import ZIP_STORED, ZipFile
 
 from typer import Typer
 
-from ..config import Settings
-from .models import RES
+from igi.config import Settings
+from igi.res.models import RES
 
-app = Typer(name="igi_res", add_completion=False)
-
-
-@app.command()
-def inspect(src: Path) -> None:
-    res = RES.model_validate_file(src)
-
-    for name_chunk, body_chunk in res.content:
-        filename = name_chunk.get_cleaned_content().removeprefix("LOCAL:")
-        content = body_chunk.get_cleaned_content()
-        print(filename, len(content))
+app = Typer(add_completion=False, short_help="Submodule with RES commands")
 
 
 @app.command(short_help="Convert .res file to .zip file")

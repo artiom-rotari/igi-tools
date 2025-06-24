@@ -2,14 +2,13 @@ from rich import print
 from typer import Typer
 
 from . import __version__
-from .analyse.cli import app as igi_analyse
-from .config.cli import app as igi_config
+from .config import Settings
+from .dev.cli import app as igi_dev
 from .qvm.cli import app as igi_qvm
 from .res.cli import app as igi_res
 
 app = Typer(add_completion=False)
-app.add_typer(igi_analyse, name="analyse")
-app.add_typer(igi_config, name="config")
+app.add_typer(igi_dev, name="dev")
 app.add_typer(igi_qvm, name="qvm")
 app.add_typer(igi_res, name="res")
 
@@ -17,6 +16,17 @@ app.add_typer(igi_res, name="res")
 @app.command()
 def version():
     print(f"Version: [green]{__version__}[/green]")
+
+
+@app.command(short_help="Initialize configuration file (igi.json)")
+def config_initialize() -> None:
+    Settings.dump()
+
+
+@app.command(short_help="Check configuration file")
+def config_check() -> None:
+    settings = Settings.load()
+    settings.check()
 
 
 def main() -> None:

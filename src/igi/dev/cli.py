@@ -7,7 +7,7 @@ from typer import Typer
 
 from igi.config import Settings
 
-app = Typer(add_completion=False, short_help="Development commands")
+app = Typer(add_completion=False, short_help="Submodule with development commands")
 
 
 def print_formats(counter: defaultdict) -> None:
