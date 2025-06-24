@@ -7,7 +7,7 @@ from typer import Typer
 from ..config import Settings
 from .models import RES
 
-app = Typer(name="igi_res")
+app = Typer(name="igi_res", add_completion=False)
 
 
 @app.command()
