@@ -15,7 +15,8 @@ def glob(pattern: str = "**/*.res"):
         return
 
     for i, file in enumerate(settings.game_dir.glob(pattern), start=1):
-        print(f"[{i:>04}] {file.as_posix()}")
+        if file.is_file():
+            print(f"[{i:>04}] {file.as_posix()}")
 
 
 @app.command()
@@ -28,7 +29,8 @@ def extensions():
     counter = defaultdict(lambda: 0)
 
     for file in settings.game_dir.glob("**/*"):
-        counter[file.suffix] += 1
+        if file.is_file():
+            counter[file.suffix] += 1
 
     for key, value in sorted(counter.items(), key=lambda item: item[1], reverse=True):
         print(f"{key}: {value}")

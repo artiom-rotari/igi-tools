@@ -1,129 +1,14 @@
-import struct
+from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
-from typing import Literal, Self
 from zipfile import ZIP_STORED, ZipFile
 
-from pydantic import BaseModel, Field, NonNegativeInt
 from typer import Typer
 
-from igi.config import Settings
+from ..config import Settings
+from .models import RES
 
 app = Typer(name="igi_res")
-
-
-class ChunkHeader(BaseModel):
-    signature: bytes = Field(min_length=4, max_length=4)
-    length: NonNegativeInt
-    padding: Literal[4, 32]
-    next_position: NonNegativeInt
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        # noinspection PyTypeChecker
-        data = struct.unpack("4s3I", stream.read(16))
-        return cls(signature=data[0], length=data[1], padding=data[2], next_position=data[3])
-
-
-class Chunk(BaseModel):
-    header: ChunkHeader
-    content: bytes
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO, header: ChunkHeader) -> Self:
-        padding_length = (header.padding - stream.tell() % header.padding) % header.padding
-        padding_data = stream.read(padding_length)
-
-        if padding_data != b"\x00" * padding_length:
-            raise ValueError(f"Expected padding data to be null bytes: {padding_data}")
-
-        content = stream.read(header.length)
-
-        return cls(header=header, content=content)
-
-
-class RESChunkNAMEHeader(ChunkHeader):
-    signature: Literal[b"NAME"]
-
-
-class RESChunkNAME(Chunk):
-    header: RESChunkNAMEHeader
-
-    def get_cleaned_content(self) -> str:
-        return self.content.decode().removesuffix("\x00")
-
-
-class RESChunkBODYHeader(ChunkHeader):
-    signature: Literal[b"BODY", b"PATH", b"CSTR"]
-
-
-class RESChunkBODY(Chunk):
-    header: RESChunkBODYHeader
-
-    def get_cleaned_content(self) -> bytes | str:
-        if self.header.signature == b"BODY":
-            return self.content
-        if self.header.signature in {b"PATH", b"CSTR"}:
-            return self.content.decode().removesuffix("\x00")
-        raise ValueError("Invalid signature")
-
-
-class RESHeader(BaseModel):
-    signature: Literal[b"ILFF"]
-    length: NonNegativeInt
-    padding: Literal[4, 32]
-    next_position: NonNegativeInt
-    content_signature: Literal[b"IRES"]
-
-
-class RES(BaseModel):
-    header: RESHeader
-    content: list[tuple[RESChunkNAME, RESChunkBODY]]
-
-    @classmethod
-    def model_validate_file(cls, path: Path | str) -> Self:
-        # noinspection PyTypeChecker
-        return cls.model_validate_stream(BytesIO(Path(path).read_bytes()))
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        # noinspection PyTypeChecker
-        header_data = struct.unpack("4s3I4s", stream.read(20))
-
-        header = RESHeader(
-            signature=header_data[0],
-            length=header_data[1],
-            padding=header_data[2],
-            next_position=header_data[3],
-            content_signature=header_data[4],
-        )
-
-        padding_length = (header.padding - stream.tell() % header.padding) % header.padding
-        padding_data = stream.read(padding_length)
-
-        if padding_data != b"\x00" * padding_length:
-            raise ValueError(f"Expected padding data to be null bytes: {padding_data}")
-
-        content = []
-
-        while True:
-            position = stream.tell()
-            name_chunk = RESChunkNAME.model_validate_stream(stream, RESChunkNAMEHeader.model_validate_stream(stream))
-            stream.seek(position + name_chunk.header.next_position)
-
-            position = stream.tell()
-            body_chunk = RESChunkBODY.model_validate_stream(stream, RESChunkBODYHeader.model_validate_stream(stream))
-            stream.seek(position + body_chunk.header.next_position)
-
-            content.append((name_chunk, body_chunk))
-
-            if body_chunk.header.next_position == 0:
-                break
-
-        return cls(header=header, content=content)
-
-    def is_archive(self) -> bool:
-        return all(body_chunk.header.signature in {b"BODY", b"PATH"} for _, body_chunk in self.content)
 
 
 @app.command()
@@ -188,3 +73,48 @@ def convert_all() -> None:
         except Exception as e:
             print(src_filepath)
             print(e)
+
+
+@app.command()
+def glob() -> None:
+    settings = Settings.load()
+
+    if not settings.is_work_dir_configured():
+        return
+
+    for i, path in enumerate(settings.work_dir.glob("**/*.zip")):
+        print(f"[{i:>04}] {path.relative_to(settings.work_dir)}")
+
+        with ZipFile(path) as zip_file:
+            for name in zip_file.namelist():
+                print(f"  [{i:>04}] {name}")
+
+
+@app.command()
+def extensions() -> None:
+    settings = Settings.load()
+
+    if not settings.is_work_dir_configured():
+        return
+
+    counter_cumulative = defaultdict(lambda: 0)
+    counter_per_zip = defaultdict(lambda: defaultdict(lambda: 0))
+
+    for i, path in enumerate(settings.work_dir.glob("**/*.zip")):
+        with ZipFile(path) as zip_file:
+            for name in zip_file.namelist():
+                counter_cumulative[Path(name).suffix] += 1
+                counter_per_zip[path.relative_to(settings.work_dir).as_posix()][Path(name).suffix] += 1
+
+    for extension, count in sorted(counter_cumulative.items(), key=lambda item: item[1], reverse=True):
+        print(f"{count:>05} {extension}")
+
+    print()
+
+    for key, value in counter_per_zip.items():
+        print(f"{key}")
+
+        for extension, count in sorted(value.items(), key=lambda item: item[1], reverse=True):
+            print(f"  {count:>05} {extension}")
+
+        print()
