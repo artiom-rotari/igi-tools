@@ -1,4 +1,3 @@
-from collections import defaultdict
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZIP_STORED, ZipFile
@@ -73,48 +72,3 @@ def convert_all() -> None:
         except Exception as e:
             print(src_filepath)
             print(e)
-
-
-@app.command()
-def glob() -> None:
-    settings = Settings.load()
-
-    if not settings.is_work_dir_configured():
-        return
-
-    for i, path in enumerate(settings.work_dir.glob("**/*.zip")):
-        print(f"[{i:>04}] {path.relative_to(settings.work_dir)}")
-
-        with ZipFile(path) as zip_file:
-            for name in zip_file.namelist():
-                print(f"  [{i:>04}] {name}")
-
-
-@app.command()
-def extensions() -> None:
-    settings = Settings.load()
-
-    if not settings.is_work_dir_configured():
-        return
-
-    counter_cumulative = defaultdict(lambda: 0)
-    counter_per_zip = defaultdict(lambda: defaultdict(lambda: 0))
-
-    for i, path in enumerate(settings.work_dir.glob("**/*.zip")):
-        with ZipFile(path) as zip_file:
-            for name in zip_file.namelist():
-                counter_cumulative[Path(name).suffix] += 1
-                counter_per_zip[path.relative_to(settings.work_dir).as_posix()][Path(name).suffix] += 1
-
-    for extension, count in sorted(counter_cumulative.items(), key=lambda item: item[1], reverse=True):
-        print(f"{count:>05} {extension}")
-
-    print()
-
-    for key, value in counter_per_zip.items():
-        print(f"{key}")
-
-        for extension, count in sorted(value.items(), key=lambda item: item[1], reverse=True):
-            print(f"  {count:>05} {extension}")
-
-        print()

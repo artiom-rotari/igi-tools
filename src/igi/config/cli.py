@@ -6,7 +6,7 @@ app = Typer(name="igi_config", add_completion=False, short_help="Configure CLI")
 
 
 @app.command(short_help="Initialize configuration file (igi.json)")
-def init() -> None:
+def initialize() -> None:
     Settings.dump()
 
 
