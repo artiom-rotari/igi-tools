@@ -1,0 +1,10 @@
+// Convert regular wav file into game wav file
+// Argument 1: Input filepath
+// Argument 2: Output filepath
+// Argument 3: Sound pack method
+//             0 = SOUNDPACKMETHOD_RAW,
+//             1 = SOUNDPACKMETHOD_RAW_RESIDENT  (default)
+//             2 = SOUNDPACKMETHOD_ADPCM
+//             3 = SOUNDPACKMETHOD_ADPCM_RESIDENT
+
+ConvertSoundFile("inputs/m1_ambience_regular.wav", "outputs/m1_ambience_encoded.wav", 0);
