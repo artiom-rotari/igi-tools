@@ -1,6 +1,6 @@
 [project]
 name = "igi"
-version = "0.0.0"
+version = "0.1.0"
 description = "Reverse engineering tools for 'Project IGI' game"
 readme = "README.md"
 authors = [
