@@ -3,8 +3,8 @@ from pathlib import Path
 from rich import print
 from typer import Typer
 
-from igi.config import Settings
-from igi.res.models import RES
+from igipy.config import Settings
+from igipy.res.models import RES
 
 app = Typer(add_completion=False, short_help="Submodule with RES commands")
 

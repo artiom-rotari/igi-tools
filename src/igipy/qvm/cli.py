@@ -3,8 +3,8 @@ from pathlib import Path
 from rich import print
 from typer import Typer
 
-from igi.config import Settings
-from igi.qvm.models import QVM
+from igipy.config import Settings
+from igipy.qvm.models import QVM
 
 app = Typer(add_completion=False, short_help="Submodule with QVM commands")
 

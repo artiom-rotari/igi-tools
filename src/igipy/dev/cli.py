@@ -5,7 +5,7 @@ from zipfile import ZipFile
 from tabulate import tabulate
 from typer import Typer
 
-from igi.config import Settings
+from igipy.config import Settings
 
 app = Typer(add_completion=False, short_help="Submodule with development commands")
 

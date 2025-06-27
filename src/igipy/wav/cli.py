@@ -4,8 +4,8 @@ from pathlib import Path
 from rich import print
 from typer import Typer
 
-from igi.config import Settings
-from igi.wav.models import WAV
+from igipy.config import Settings
+from igipy.wav.models import WAV
 
 app = Typer(add_completion=False, short_help="Submodule with WAV commands")
 
