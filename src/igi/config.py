@@ -1,14 +1,17 @@
 from pathlib import Path
 from typing import Self
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
+from rich import print
 
 settings_file: Path = Path("igi.json")
 
 
 class Settings(BaseSettings):
-    game_dir: Path | None = None
-    work_dir: Path | None = Path()
+    game_dir: Path | None = Field(default=None, description="Directory where igi.exe is located")
+    unpacked_dir: Path = Field(default="./unpacked", description="Directory where unpacked .res will be stored")
+    converted_dir: Path = Field(default="./converted", description="Directory where converted files will be stored")
 
     @classmethod
     def load(cls) -> Self:
@@ -23,16 +26,20 @@ class Settings(BaseSettings):
 
         with settings_file.open("w") as fp:
             print(cls().model_dump_json(indent=2), file=fp)
-            print("File created")
+            print(
+                f"Configuration file {settings_file.as_posix()} created in current directory with default values\n"
+                f'Open it using any text editor and change value of "game_dir" to directory where igi.exe is.\n'
+                f"After execute `igi config-check`"
+            )
 
-    def check(self):
-        if all(
+    def is_valid(self) -> bool:
+        return all(
             [
                 self.is_game_dir_configured(),
-                self.is_work_dir_configured(),
+                self.is_unpacked_dir_configured(),
+                self.is_converted_dir_configured(),
             ]
-        ):
-            print("Settings seems to be ok")
+        )
 
     def is_game_dir_configured(self) -> bool:
         check: bool = True
@@ -52,17 +59,32 @@ class Settings(BaseSettings):
 
         return check
 
-    def is_work_dir_configured(self) -> bool:
+    def is_unpacked_dir_configured(self) -> bool:
         check: bool = True
 
-        if not self.work_dir:
-            print("work_dir: is not set. Please set game dir in igi.json -> work_dir")
+        if not self.unpacked_dir:
+            print("unpacked_dir: is not set. Please set game dir in igi.json -> unpacked_dir")
             check = False
-        if not self.work_dir.exists():
-            print(f"work_dir: {self.work_dir} does not exist")
+        elif not self.unpacked_dir.exists():
+            self.unpacked_dir.mkdir(parents=True, exist_ok=True)
+            check = True
+        elif not self.unpacked_dir.is_dir():
+            print(f"unpacked_dir: {self.unpacked_dir} is not a directory")
             check = False
-        if not self.work_dir.is_dir():
-            print(f"work_dir: {self.work_dir} is not a directory")
+
+        return check
+
+    def is_converted_dir_configured(self) -> bool:
+        check: bool = True
+
+        if not self.converted_dir:
+            print("converted_dir: is not set. Please set game dir in igi.json -> converted_dir")
+            check = False
+        elif not self.converted_dir.exists():
+            self.converted_dir.mkdir(parents=True, exist_ok=True)
+            check = True
+        elif not self.converted_dir.is_dir():
+            print(f"converted_dir: {self.converted_dir} is not a directory")
             check = False
 
         return check

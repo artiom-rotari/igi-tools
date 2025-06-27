@@ -26,7 +26,8 @@ def config_initialize() -> None:
 @app.command(short_help="Check configuration file")
 def config_check() -> None:
     settings = Settings.load()
-    settings.check()
+    if settings.is_valid():
+        print("[green]Configuration file is valid.[/green]")
 
 
 def main() -> None:
