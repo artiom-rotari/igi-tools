@@ -1,7 +1,6 @@
-from io import BytesIO
 from pathlib import Path
-from zipfile import ZIP_STORED, ZipFile
 
+from rich import print
 from typer import Typer
 
 from igi.config import Settings
@@ -10,55 +9,48 @@ from igi.res.models import RES
 app = Typer(add_completion=False, short_help="Submodule with RES commands")
 
 
-@app.command(short_help="Convert .res file to .zip file")
-def convert(src: Path, dst: Path) -> None:
+@app.command(short_help="Unpack .res")
+def unpack(src: Path, dst: Path) -> None:
     if not src.exists() and src.is_file():
-        print(f"{src} is not a file.")
+        print(f"Can not read {src}. Is not a file.")
         return
 
-    if dst.exists():
-        print(f"{dst} already exists.")
+    if dst.exists() and dst.is_file():
+        print(f"Can not unpack to {dst}. Is a file.")
         return
 
     res = RES.model_validate_file(src)
 
-    if not res.is_archive():
-        print(f"{src} is not a archive.")
+    if res.is_text_container():
+        print(f"{src} skipped because it is a text container.")
         return
 
-    dst_file = BytesIO()
-    with ZipFile(dst_file, "w", compression=ZIP_STORED) as zip_file:
-        for name_chunk, body_chunk in res.content:
-            if body_chunk.header.signature == b"PATH":
+    if res.is_file_container():
+        for res_file in res.content:
+            if not res_file.is_file():
                 continue
 
-            filename = name_chunk.get_cleaned_content().removeprefix("LOCAL:")
-            content = body_chunk.get_cleaned_content()
-            zip_file.writestr(filename, content)
+            res_file_path = dst.joinpath(res_file.file_name)
+            res_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    dst_file.seek(0)
-    dst_data = dst_file.read()
+            if res_file_path.exists():
+                print(f"{res_file_path} already exists.")
+                continue
 
-    # noinspection PyTypeChecker
-    dst.write_bytes(dst_data)
+            res_file_path.write_bytes(res_file.file_content)
+            print(f"Created {res_file_path}")
 
 
-@app.command(short_help="Convert all .res files found in game_dir to .zip")
-def convert_all() -> None:
+@app.command(short_help="Unpack all .res files found in game_dir")
+def unpack_all() -> None:
     settings = Settings.load()
 
-    if not settings.is_game_dir_configured():
-        return
-
-    if not settings.is_work_dir_configured():
+    if not settings.is_valid():
+        print("Configuration file is not valid.")
         return
 
     for src_filepath in settings.game_dir.glob("**/*.res"):
-        dst_filepath = settings.work_dir.joinpath(src_filepath.relative_to(settings.game_dir)).with_suffix(".zip")
-        dst_filepath.parent.mkdir(parents=True, exist_ok=True)
-
-        try:
-            convert(src_filepath, dst_filepath)
-        except Exception as e:
-            print(src_filepath)
-            print(e)
+        dst_filepath = settings.unpacked_dir.joinpath(src_filepath.relative_to(settings.game_dir))
+        dst_filepath.mkdir(parents=True, exist_ok=True)
+        print(f"[green]Unpacking {src_filepath} to {dst_filepath}[/green]")
+        unpack(src_filepath, dst_filepath)

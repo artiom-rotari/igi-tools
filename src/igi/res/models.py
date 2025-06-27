@@ -70,9 +70,35 @@ class RESHeader(BaseModel):
     content_signature: Literal[b"IRES"]
 
 
+class RESFile(BaseModel):
+    name: RESChunkNAME
+    body: RESChunkBODY
+
+    def is_file(self) -> bool:
+        return self.body.header.signature == b"BODY"
+
+    def is_text(self) -> bool:
+        return self.body.header.signature == b"CSTR"
+
+    def is_path(self) -> bool:
+        return self.body.header.signature == b"PATH"
+
+    @property
+    def file_name(self) -> str:
+        if not self.is_file():
+            raise ValueError("File is not a file")
+        return self.name.get_cleaned_content().removeprefix("LOCAL:")
+
+    @property
+    def file_content(self) -> bytes | str:
+        if not self.is_file():
+            raise ValueError("File is not a file")
+        return self.body.get_cleaned_content()
+
+
 class RES(BaseModel):
     header: RESHeader
-    content: list[tuple[RESChunkNAME, RESChunkBODY]]
+    content: list[RESFile]
 
     @classmethod
     def model_validate_file(cls, path: Path | str) -> Self:
@@ -109,12 +135,15 @@ class RES(BaseModel):
             body_chunk = RESChunkBODY.model_validate_stream(stream, RESChunkBODYHeader.model_validate_stream(stream))
             stream.seek(position + body_chunk.header.next_position)
 
-            content.append((name_chunk, body_chunk))
+            content.append(RESFile(name=name_chunk, body=body_chunk))
 
             if body_chunk.header.next_position == 0:
                 break
 
         return cls(header=header, content=content)
 
-    def is_archive(self) -> bool:
-        return all(body_chunk.header.signature in {b"BODY", b"PATH"} for _, body_chunk in self.content)
+    def is_file_container(self) -> bool:
+        return all(res_file.body.header.signature in {b"BODY", b"PATH"} for res_file in self.content)
+
+    def is_text_container(self) -> bool:
+        return all(res_file.body.header.signature == b"CSTR" for res_file in self.content)
