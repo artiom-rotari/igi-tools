@@ -1,3 +1,3 @@
 import importlib.metadata
 
-__version__ = importlib.metadata.version("igi")
+__version__ = importlib.metadata.version("igipy")

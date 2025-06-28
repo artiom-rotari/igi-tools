@@ -1,42 +1,28 @@
 # IGI Tools
 
-Reverse engineering tools for 'Project IGI' game.
+**igipy** is a CLI application built on top of python for converting game files from `Project I.G.I: I'm going in` (or simple - IGI 1) formats into standard (common used) formats.
 
-## Game files
+## Features
 
-### From game folder
+- Extract files from `.res` archives
+- Decompile `.qvm` files
+- Convert `.wav` into regular Waveform. Including ADPCM encoded files.
 
-| Format extension | Count | Is game specific                     | Is binary                            | Info                       |
-|------------------|-------|--------------------------------------|--------------------------------------|----------------------------|
-| `.qvm`           | 997   | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> | [Docs](docs/format_qvm.md) |
-| `.wav`           | 394   | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.dat` (graph)   | 300   | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.res`           | 92    | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.tex`           | 26    | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.dat` (mtp)     | 17    | <span style="color:green">Yes</span> | <span style="color:red">No </span>   |                            |
-| `.mtp`           | 17    | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.bit`           | 14    | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.cmd`           | 14    | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.ctr`           | 14    | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.lmp`           | 14    | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.hmp`           | 6     | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.rtf`           | 6     | <span style="color:red">No </span>   | <span style="color:red">No </span>   |                            |
-| `.txt`           | 6     | <span style="color:red">No </span>   | <span style="color:red">No </span>   |                            |
-| `.iff`           | 6     | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
-| `.url`           | 5     | <span style="color:red">No </span>   | <span style="color:red">No </span>   |                            |
-| `.avi`           | 5     | <span style="color:red">No </span>   | <span style="color:green">Yes</span> |                            |
-| `.AFP`           | 3     | <span style="color:red">No </span>   | <span style="color:red">No </span>   |                            |
-| `.exe`           | 2     | <span style="color:red">No </span>   | <span style="color:green">Yes</span> |                            |
-| `.fnt`           | 2     | <span style="color:green">Yes</span> | <span style="color:green">Yes</span> |                            |
 
-### From .res files
+# Installation
 
-| Format extension | Count | Is game specific                     | Is binary                             | Info |
-|------------------|-------|--------------------------------------|---------------------------------------|------|
-| `.olm`           | 25337 | <span style="color:green">Yes</span> | <span style="color:green">Yes</span>  |      |
-| `.tex`           | 7199  | <span style="color:green">Yes</span> | <span style="color:green">Yes</span>  |      |
-| `.mef`           | 6794  | <span style="color:green">Yes</span> | <span style="color:green">Yes</span>  |      |
-| `.wav`           | 346   | <span style="color:green">Yes</span> | <span style="color:green">Yes</span>  |      |
-| `.spr`           | 158   | <span style="color:green">Yes</span> | <span style="color:green">Yes</span>  |      |
-| `.fnt`           | 9     | <span style="color:green">Yes</span> | <span style="color:green">Yes</span>  |      |
-| `.pic`           | 5     | <span style="color:green">Yes</span> | <span style="color:green">Yes</span>  |      |
+This package requires `python 3.13` (at least it is developed and tested on this python version).
+
+To install the package itself, run:
+
+```
+pip install --upgrade igipy
+```
+
+# Quickstart
+
+Create somewhere on your PC a folder where you want to extract game files. Open PowerShell and run:
+
+```
+python -m igipy version
+```
