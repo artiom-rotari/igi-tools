@@ -9,20 +9,71 @@
 - Convert `.wav` into regular Waveform. Including ADPCM encoded files.
 
 
-# Installation
+## Installation
 
 This package requires `python 3.13` (at least it is developed and tested on this python version).
 
 To install the package itself, run:
 
 ```
-pip install --upgrade igipy
+python -m pip install --upgrade igipy
 ```
 
-# Quickstart
+## Quickstart
 
 Create somewhere on your PC a folder where you want to extract game files. Open PowerShell and run:
 
 ```
 python -m igipy version
 ```
+
+You should see `Version: 0.1.2` (or higher). That means that the package is installed correctly.
+
+To see all available modules, run:
+
+```
+python -m igipy --help
+```
+
+To execute one or another conversion command, this package requires a minimal configuration. Run:
+
+```
+python -m igipy config-initialize
+```
+
+This command will create in the current directory a file - `igi.json`. Open this file with your favorite text editor and update value of `"game"` from none to path where IGI 1 is installed.
+
+To check the configuration, execute:
+
+```
+python -m igipy config-check
+```
+
+If everything is ok you must see: Configuration file is valid. If not, then please fix all issues in the config file and try again.
+
+
+## User guide
+
+### Extract `.res` archives
+
+```
+python -m igipy res unpack-all
+```
+
+This command will iterate all `.res` files in game directory and will unpack them into `./unpacked` directory with respecting the game folder structure.
+
+### Convert `.wav` files
+
+```
+python -m igipy wav convert-all
+```
+
+This command will iterate all `.wav` files from game folder and `./unpacked` folder and will convert them into `./converted` folder with respecting the game folder structure.
+
+### Convert `.qvm` files
+
+```
+python -m igipy qvm convert-all
+```
+
+This command will iterate all `.qvm` files from game folder and will convert them into `.qsc` in the `./converted` folder.
