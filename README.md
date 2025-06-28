@@ -41,7 +41,17 @@ To execute one or another conversion command, this package requires a minimal co
 python -m igipy config-initialize
 ```
 
-This command will create in the current directory a file - `igi.json`. Open this file with your favorite text editor and update value of `"game"` from none to path where IGI 1 is installed.
+This command will create in the current directory a file - `igi.json`. Open this file with your favorite text editor and update value of `"game_dir"` from `none` to a path where IGI 1 is installed. For example:
+
+```
+{
+  "game_dir": "C:/Users/artiom.rotari/Desktop/ProjectIGI",
+  "unpacked_dir": "unpacked",
+  "converted_dir": "converted"
+}
+```
+
+Other settings you can leave as is for now.
 
 To check the configuration, execute:
 
@@ -49,7 +59,7 @@ To check the configuration, execute:
 python -m igipy config-check
 ```
 
-If everything is ok you must see: Configuration file is valid. If not, then please fix all issues in the config file and try again.
+If everything is good you must see: `Configuration file is valid`. If not, then please fix all issues in the config file and try again.
 
 
 ## User guide
