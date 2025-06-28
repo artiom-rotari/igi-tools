@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 This is the first release
 
 ### Added
+
 - `.res` unpacker (only `.res` files that contain files)
 - `.qvm` convert to `.qsc`
 - `.wav` convert to `.wav` (waveform) with decoding or `ADPCM` encoded sound files.
+
+## [0.1.2] - 2025-06-29
+
+Prepare the repository for publication
+
+### Fixed
+
+- `python -m igipy version` returns an error
