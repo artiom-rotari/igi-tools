@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from rich import print
+from rich import print  # noqa: A004
 from typer import Typer
 
 from igipy.config import Settings

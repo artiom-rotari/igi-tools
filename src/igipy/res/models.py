@@ -29,7 +29,8 @@ class Chunk(BaseModel):
         padding_data = stream.read(padding_length)
 
         if padding_data != b"\x00" * padding_length:
-            raise ValueError(f"Expected padding data to be null bytes: {padding_data}")
+            message = f"Expected padding data to be null bytes: {padding_data}"
+            raise ValueError(message)
 
         content = stream.read(header.length)
 
@@ -59,7 +60,8 @@ class RESChunkBODY(Chunk):
             return self.content
         if self.header.signature in {b"PATH", b"CSTR"}:
             return self.content.decode().removesuffix("\x00")
-        raise ValueError("Invalid signature")
+        message = f"Unsupported chunk signature: {self.header.signature}"
+        raise ValueError(message)
 
 
 class RESHeader(BaseModel):
@@ -86,13 +88,15 @@ class RESFile(BaseModel):
     @property
     def file_name(self) -> str:
         if not self.is_file():
-            raise ValueError("File is not a file")
+            message = f"Is not a file: {self.name.get_cleaned_content()}"
+            raise ValueError(message)
         return self.name.get_cleaned_content().removeprefix("LOCAL:")
 
     @property
     def file_content(self) -> bytes | str:
         if not self.is_file():
-            raise ValueError("File is not a file")
+            message = f"Is not a file: {self.name.get_cleaned_content()}"
+            raise ValueError(message)
         return self.body.get_cleaned_content()
 
 
@@ -122,7 +126,8 @@ class RES(BaseModel):
         padding_data = stream.read(padding_length)
 
         if padding_data != b"\x00" * padding_length:
-            raise ValueError(f"Expected padding data to be null bytes: {padding_data}")
+            message = f"Expected padding data to be null bytes: {padding_data}"
+            raise ValueError(message)
 
         content = []
 

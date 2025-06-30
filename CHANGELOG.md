@@ -22,3 +22,13 @@ Prepare the repository for publication
 ### Fixed
 
 - `python -m igipy version` returns an error
+
+## [0.1.3] - 2025-06-30
+
+Minor fixes
+
+### Fixed
+
+- Fixed script name in `pyproject.toml`
+- Bump up `pydantic-settings` version
+- Code clean

@@ -1,4 +1,4 @@
-from rich import print
+from rich import print  # noqa: A004
 from typer import Typer
 
 from . import __version__
@@ -16,7 +16,7 @@ app.add_typer(igi_wav, name="wav")
 
 
 @app.command()
-def version():
+def version() -> None:
     print(f"Version: [green]{__version__}[/green]")
 
 

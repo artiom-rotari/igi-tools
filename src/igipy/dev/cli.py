@@ -1,7 +1,7 @@
 from collections import defaultdict
 from pathlib import Path
-from zipfile import ZipFile
 
+from rich import print  # noqa: A004
 from tabulate import tabulate
 from typer import Typer
 
@@ -34,14 +34,14 @@ def print_zip_formats(counter: defaultdict) -> None:
     )
 
 
-def dir_glob(directory: Path, pattern: str, absolute: bool = False) -> None:
+def dir_glob(directory: Path, pattern: str, absolute: bool = False) -> None:  # noqa: FBT001, FBT002
     for number, path in enumerate(directory.glob(pattern), start=1):
         if path.is_file():
             print(f"[{number:>04}] {(path.absolute() if absolute else path.relative_to(directory)).as_posix()}")
 
 
 @app.command(short_help="List files in game directory by pattern")
-def game_dir_glob(pattern: str = "**/*", absolute: bool = False) -> None:
+def game_dir_glob(pattern: str = "**/*", absolute: bool = False) -> None:  # noqa: FBT001, FBT002
     settings = Settings.load()
 
     if not settings.is_game_dir_configured():
@@ -50,18 +50,8 @@ def game_dir_glob(pattern: str = "**/*", absolute: bool = False) -> None:
     dir_glob(directory=settings.game_dir, pattern=pattern, absolute=absolute)
 
 
-@app.command(short_help="List files if work directory by pattern")
-def work_dir_glob(pattern: str = "**/*", absolute: bool = False) -> None:
-    settings = Settings.load()
-
-    if not settings.is_work_dir_configured():
-        return
-
-    dir_glob(directory=settings.work_dir, pattern=pattern, absolute=absolute)
-
-
 @app.command(short_help="List formats in game directory")
-def game_dir_formats():
+def game_dir_formats() -> None:
     settings = Settings.load()
 
     if not settings.is_game_dir_configured():
@@ -83,27 +73,3 @@ def game_dir_formats():
         formats_counter[format_name] += 1
 
     print_formats(formats_counter)
-
-
-@app.command(short_help="List formats in zip files")
-def work_zip_formats(cumulative: bool = True, absolute: bool = False) -> None:
-    settings = Settings.load()
-
-    if not settings.is_work_dir_configured():
-        return
-
-    formats_counter = defaultdict(lambda: 0)
-    zip_formats_counter = defaultdict(lambda: defaultdict(lambda: 0))
-
-    for number, path in enumerate(settings.work_dir.glob("**/*.zip"), start=1):
-        with ZipFile(path) as zip_file:
-            for sub_number, sub_name in enumerate(zip_file.namelist(), start=1):
-                format_name = f"`{Path(sub_name).suffix}`"
-                file_name = path.absolute().as_posix() if absolute else path.relative_to(settings.work_dir).as_posix()
-                formats_counter[format_name] += 1
-                zip_formats_counter[file_name][format_name] += 1
-
-    if cumulative:
-        print_formats(formats_counter)
-    else:
-        print_zip_formats(zip_formats_counter)

@@ -21,17 +21,20 @@ class QVMInstruction(BaseModel, ABC):
 
     @property
     def operator(self) -> str:
-        raise NotImplementedError(f"{self.__class__.__name__} does not have an operator")
+        message = f"{self.__class__.__name__} does not have an operator"
+        raise NotImplementedError(message)
 
     @property
     def priority(self) -> int:
-        raise NotImplementedError(f"{self.__class__.__name__} does not have a priority")
+        message = f"{self.__class__.__name__} does not have a priority"
+        raise NotImplementedError(message)
 
 
 class UnsupportedQVMInstruction(QVMInstruction, ABC):
     @classmethod
     def model_validate_stream(cls, stream: BinaryIO, address: NonNegativeInt) -> Self:
-        raise NotImplementedError(f"{cls.__name__} is not implemented")
+        message = f"{cls.__name__} is not implemented"
+        raise NotImplementedError(message)
 
 
 # Unsupported instructions
@@ -79,8 +82,7 @@ class InstructionILLEGAL(UnsupportedQVMInstruction):
 
 def read_argument(stream: BinaryIO, argument_format: str) -> tuple[Any, ...]:
     argument_bytes = stream.read(struct.calcsize(argument_format))
-    argument = struct.unpack(argument_format, argument_bytes)
-    return argument
+    return struct.unpack(argument_format, argument_bytes)
 
 
 # noinspection DuplicatedCode
@@ -455,27 +457,28 @@ class InstructionBRK(QVMInstruction):
 class ASTNode(BaseModel, ABC):
     @abstractmethod
     def get_token(self, indent: int = 0) -> str:
-        raise NotImplementedError(f"{self.__class__.__name__} does not have a token")
+        message = f"{self.__class__.__name__} does not have a token"
+        raise NotImplementedError(message)
 
 
 class NumberLiteral(ASTNode):
     value: int | float
 
-    def get_token(self, indent: int = 0) -> str:
+    def get_token(self, indent: int = 0) -> str:  # noqa: ARG002
         return f"{self.value}"
 
 
 class StringLiteral(ASTNode):
     value: str
 
-    def get_token(self, indent: int = 0) -> str:
+    def get_token(self, indent: int = 0) -> str:  # noqa: ARG002
         return f'"{self.value}"'
 
 
 class IdentifierLiteral(ASTNode):
     value: str
 
-    def get_token(self, indent: int = 0) -> str:
+    def get_token(self, indent: int = 0) -> str:  # noqa: ARG002
         return f"{self.value}"
 
 
@@ -525,7 +528,7 @@ class CallStatement(ASTNode):
                 argument_token_indent = "\t" * (indent + 1)
                 argument_token = f"\n{argument_token_indent}{argument_token}"
                 token_length = len(argument_token) + 2
-            elif len(argument_token) + token_length > 300:
+            elif len(argument_token) + token_length > 300:  # noqa: PLR2004
                 argument_token = f"\n{argument_token}"
                 token_length = len(argument_token) + 2
             else:
@@ -534,9 +537,7 @@ class CallStatement(ASTNode):
             token_list.append(argument_token)
 
         arguments_token = ", ".join(token_list)
-        token = f"{function_token}({arguments_token})"
-
-        return token
+        return f"{function_token}({arguments_token})"
 
 
 class WhileStatement(ASTNode):
@@ -603,7 +604,7 @@ class StatementList(ASTNode):
     statements: list[ASTNode]
 
     @classmethod
-    def from_instructions(
+    def from_instructions(  # noqa: C901, PLR0912, PLR0915
         cls,
         identifiers: list[str],
         strings: list[str],
@@ -727,7 +728,8 @@ class StatementList(ASTNode):
                         )
 
                         if len(argument.statements) > 1:
-                            raise ValueError(f"Unexpected statement count: {len(argument.statements)}")
+                            message = f"Unexpected statement count: {len(argument.statements)}"
+                            raise ValueError(message)
 
                         argument = argument.statements[0]
                         arguments.append(argument)
@@ -773,11 +775,13 @@ class StatementList(ASTNode):
                             statement = IfStatement(condition=condition, body=body, else_body=else_body)
                             current_address = next_instruction.address_next + next_instruction.argument
                         case _:
-                            raise ValueError(f"Unsupported argument: {next_instruction.argument}")
+                            message = f"Unsupported argument: {next_instruction.argument}"
+                            raise ValueError(message)
 
                     statements.append(statement)
                 case _:
-                    raise ValueError(f"Unsupported instruction: {current_instruction.__class__.__qualname__}")
+                    message = f"Unsupported instruction: {current_instruction.__class__.__qualname__}"
+                    raise ValueError(message)
 
         return cls(statements=statements)
 
@@ -822,7 +826,7 @@ class QVMHeader(BaseModel):
         obj_mapping = dict(zip(cls.__pydantic_fields__.keys(), obj_values, strict=False))
         obj = cls(**obj_mapping)
 
-        if obj.minor_version == 5 and len(data[60:]) > 4:
+        if obj.minor_version == 5 and len(data[60:]) > 4:  # noqa: PLR2004
             footer_offset = struct.unpack("I", data[60:64])[0]
             obj.footer_data_offset = footer_offset
 
@@ -877,7 +881,8 @@ class QVMInstructionDict(BaseModel):
             case 7:
                 return cls.get_code_instruction_dict_v7()
             case _:
-                raise ValueError(f"Unsupported QVM version: {version}")
+                message = f"Unsupported QVM version: {version}"
+                raise ValueError(message)
 
     # noinspection DuplicatedCode
     @classmethod
@@ -1009,8 +1014,7 @@ class QVM(BaseModel):
         instructions_data = data[header.instructions_data_slice]
         instructions = QVMInstructionDict.model_validate_bytes(data=instructions_data, version=header.minor_version)
 
-        obj = cls(header=header, identifiers=identifiers, strings=strings, instructions=instructions)
-        return obj
+        return cls(header=header, identifiers=identifiers, strings=strings, instructions=instructions)
 
     @classmethod
     def model_validate_file(cls, file: str | Path) -> Self:

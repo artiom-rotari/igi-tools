@@ -1,7 +1,7 @@
 from io import BytesIO
 from pathlib import Path
 
-from rich import print
+from rich import print  # noqa: A004
 from typer import Typer
 
 from igipy.config import Settings
@@ -11,7 +11,7 @@ app = Typer(add_completion=False, short_help="Submodule with WAV commands")
 
 
 @app.command(short_help="Convert InnerLoop .wav file to regular .wav file")
-def convert(src: Path, dst: Path):
+def convert(src: Path, dst: Path) -> BytesIO | None:
     if isinstance(src, Path) and (not src.exists() or not src.is_file()):
         print(f"{src} not found or is not a file.")
         return None
@@ -47,7 +47,7 @@ def convert(src: Path, dst: Path):
 
 
 @app.command(short_help="Convert all .wav files found in game_dir and unpacked dir to regular .wav files")
-def convert_all():
+def convert_all() -> None:
     settings = Settings.load()
 
     if not settings.is_valid():

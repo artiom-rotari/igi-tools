@@ -20,7 +20,7 @@ index_table = [
 ]
 
 
-def encode(data: bytes, channels: int = 1) -> bytes:
+def encode(data: bytes, channels: int = 1) -> bytes:  # noqa: PLR0915, PLR0912, C901
     """
     Encodes raw 16-bit PCM audio into a custom 4-bit ADPCM format,
     with support for multiple interleaved channels.
@@ -92,16 +92,16 @@ def encode(data: bytes, channels: int = 1) -> bytes:
             predictor += reconstructed_diff
 
         # Clamp predictor to 16-bit range
-        if predictor > 32767:
+        if predictor > 32767:  # noqa: PLR2004
             predictor = 32767
-        elif predictor < -32768:
+        elif predictor < -32768:  # noqa: PLR2004
             predictor = -32768
 
         # Adapt the step size for the next sample
         step_index += index_table[code & 7]
         if step_index < 0:
             step_index = 0
-        elif step_index > 88:
+        elif step_index > 88:  # noqa: PLR2004
             step_index = 88
 
         # --- Store the updated state for the current channel ---
@@ -112,7 +112,7 @@ def encode(data: bytes, channels: int = 1) -> bytes:
     output_bytes = bytearray()
     for i in range(0, len(nibbles), 2):
         nibble1 = nibbles[i]
-        if i + 1 < len(nibbles):
+        if i + 1 < len(nibbles):  # noqa: SIM108
             nibble2 = nibbles[i + 1]
         else:
             nibble2 = 0  # Pad with a 0 nibble for an odd total sample count
@@ -126,7 +126,7 @@ def encode(data: bytes, channels: int = 1) -> bytes:
     return bytes(output_bytes)
 
 
-def decode(data: bytes, channels: int = 1) -> bytes:
+def decode(data: bytes, channels: int = 1) -> bytes:  # noqa: PLR0912, C901
     """
     Decodes data from a custom 4-bit ADPCM format back into raw 16-bit PCM audio,
     with support for multiple interleaved channels.
@@ -142,7 +142,7 @@ def decode(data: bytes, channels: int = 1) -> bytes:
 
     # The terminator/padding logic is based on the total number of samples (nibbles),
     # so it works independently of the channel count.
-    has_terminator = len(data) > 0 and data[-1] == 0xAB
+    has_terminator = len(data) > 0 and data[-1] == 0xAB  # noqa: PLR2004
     data_to_decode = data[:-1] if has_terminator else data
 
     # --- Multi-channel state initialization ---
@@ -181,9 +181,9 @@ def decode(data: bytes, channels: int = 1) -> bytes:
                 predictor += reconstructed_diff
 
             # Clamp predictor to 16-bit range
-            if predictor > 32767:
+            if predictor > 32767:  # noqa: PLR2004
                 predictor = 32767
-            elif predictor < -32768:
+            elif predictor < -32768:  # noqa: PLR2004
                 predictor = -32768
 
             decoded_samples.append(predictor)
@@ -192,7 +192,7 @@ def decode(data: bytes, channels: int = 1) -> bytes:
             step_index += index_table[code & 7]
             if step_index < 0:
                 step_index = 0
-            elif step_index > 88:
+            elif step_index > 88:  # noqa: PLR2004
                 step_index = 88
 
             # --- Store the updated state for the current channel ---

@@ -3,7 +3,7 @@ from typing import Self
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from rich import print
+from rich import print  # noqa: A004
 
 settings_file: Path = Path("igi.json")
 

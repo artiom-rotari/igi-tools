@@ -59,7 +59,8 @@ class WAV(BaseModel):
             elif self.header.sound_pack in {2, 3}:
                 wave_stream.writeframesraw(adpcm.decode(self.samples, channels=self.header.channels))
             else:
-                raise ValueError("Unsupported sound pack")
+                message = f"Unsupported sound pack: {self.header.sound_pack}"
+                raise ValueError(message)
 
         stream.seek(0)
 
