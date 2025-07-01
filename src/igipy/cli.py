@@ -4,6 +4,7 @@ from typer import Typer
 from . import __version__
 from .config import Settings
 from .dev.cli import app as igi_dev
+from .olm.cli import app as igi_olm
 from .qvm.cli import app as igi_qvm
 from .res.cli import app as igi_res
 from .wav.cli import app as igi_wav
@@ -14,6 +15,7 @@ app.add_typer(igi_dev, name="dev")
 app.add_typer(igi_qvm, name="qvm")
 app.add_typer(igi_res, name="res")
 app.add_typer(igi_wav, name="wav")
+app.add_typer(igi_olm, name="olm")
 
 
 @app.command()
