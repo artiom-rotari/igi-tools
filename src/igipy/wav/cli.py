@@ -36,7 +36,7 @@ def convert(src: Path, dst: Path) -> BytesIO | None:
         print(f"Unsupported destination type: {type(dst)}")
         return None
 
-    wav.model_dump_stream(dst_stream)
+    wav.to_wav(dst_stream)
 
     if isinstance(dst, Path):
         # noinspection PyTypeChecker
