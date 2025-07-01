@@ -1,6 +1,7 @@
 from io import BytesIO
 from struct import Struct
 from typing import ClassVar, Literal, Self
+from zipfile import ZipFile
 
 from pydantic import BaseModel, Field, NonNegativeInt
 
@@ -152,3 +153,18 @@ class RES(FileModel):
 
     def is_text_container(self) -> bool:
         return all(res_file.chunk_b.header.signature == b"CSTR" for res_file in self.content)
+
+    def to_zip(self, stream: BytesIO | None = None) -> BytesIO:
+        if not self.is_file_container():
+            raise ValueError("Current is not a file container")
+
+        stream = stream or BytesIO()
+
+        with ZipFile(stream, "w") as zip_stream:
+            for res_file in self.content:
+                if res_file.is_file():
+                    zip_stream.writestr(res_file.file_name, res_file.file_content)
+
+        stream.seek(0)
+
+        return stream
