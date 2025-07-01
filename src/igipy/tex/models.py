@@ -1,225 +1,295 @@
 import struct
 from io import BytesIO
-from pathlib import Path
-from typing import Literal, Self
+from struct import Struct
+from typing import ClassVar, Literal, Self, Union
 
 from pydantic import BaseModel, NonNegativeInt
 
-from igipy.tex.tga import bitmap_to_tga
+from igipy.models import FileModel, StructModel
 
 
-class Bitmap(BaseModel):
-    width: NonNegativeInt
-    height: NonNegativeInt
-    mode: NonNegativeInt
-    lod: NonNegativeInt
-    data: bytes
+class TEX(FileModel):
+    variant: Union["TEX02", "TEX07", "TEX09", "TEX11"]
 
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO, width: int, height: int, mode: int, lod: int) -> Self:
-        if mode == 2:
-            pixel_size = 2
-        elif mode == 3 or mode == 67:
-            pixel_size = 4
-        else:
-            message = f"Unsupported mode: {mode}"
-            raise ValueError(message)
-
-        lod_width = width // (1 << lod)
-        lod_height = height // (1 << lod)
-        data_size = lod_width * lod_height * pixel_size
-        data = stream.read(data_size)
-
-        return cls(width=width, height=height, mode=mode, lod=lod, data=data)
-
-    def to_tga(self) -> BytesIO:
-        return bitmap_to_tga(self.width, self.height, self.data)
-
-
-class TEXBase(BaseModel):
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        return cls()
-
-
-class TEX2(TEXBase):
-    unknown_0: NonNegativeInt
-    unknown_1: NonNegativeInt
-    width_line: NonNegativeInt
-    width: NonNegativeInt
-    height: NonNegativeInt
-    mode: NonNegativeInt
-    bitmap: Bitmap
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        data = struct.unpack("2I4H", stream.read(16))
-        bitmap = Bitmap.model_validate_stream(stream, width=data[3], height=data[4], mode=data[5], lod=0)
-        return cls(
-            unknown_0=data[0],
-            unknown_1=data[1],
-            width_line=data[2],
-            width=data[3],
-            height=data[4],
-            mode=data[5],
-            bitmap=bitmap,
-        )
-
-
-class TEX6Item(BaseModel):
-    unknown_0: NonNegativeInt
-    unknown_1: NonNegativeInt
-    unknown_2: NonNegativeInt
-    unknown_3: NonNegativeInt
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO, count_x: int, count_y: int) -> Self:
-        data = struct.unpack("4I", stream.read(16))
-        return cls(
-            unknown_0=data[0],
-            unknown_1=data[1],
-            unknown_2=data[2],
-            unknown_3=data[3],
-        )
-
-
-class TEX6(BaseModel):
-    signature: Literal[b"LOOP"]
-    version: Literal[6]
-    unknown_0: NonNegativeInt
-    unknown_1: NonNegativeInt
-    unknown_2: NonNegativeInt
-    unknown_3: NonNegativeInt
-    count_x: NonNegativeInt
-    count_y: NonNegativeInt
-    items: list[TEX6Item]
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO, count: int) -> Self:
-        data = struct.unpack("4sI4H2I", stream.read(24))
-        items = [TEX6Item.model_validate_stream(stream, data[3], data[4]) for _ in range(count)]
-        return cls(
-            signature=data[0],
-            version=data[1],
-            unknown_0=data[2],
-            unknown_1=data[3],
-            unknown_2=data[4],
-            unknown_3=data[5],
-            count_x=data[6],
-            count_y=data[7],
-            items=items,
-        )
-
-
-class TEX9SubHeader(BaseModel):
-    offset: NonNegativeInt
-    mode: NonNegativeInt
-    width_line: NonNegativeInt
-    width: NonNegativeInt
-    height: NonNegativeInt
-    unknown_0: NonNegativeInt
-    unknown_1: NonNegativeInt
-    unknown_2: NonNegativeInt
-    unknown_3: NonNegativeInt
-    unknown_4: NonNegativeInt
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        data = struct.unpack("2I4H4I", stream.read(32))
-
-        return cls(
-            offset=data[0],
-            mode=data[1],
-            width_line=data[2],
-            width=data[3],
-            height=data[4],
-            unknown_0=data[5],
-            unknown_1=data[6],
-            unknown_2=data[7],
-            unknown_3=data[8],
-            unknown_4=data[9],
-        )
-
-
-class TEX9(TEXBase):
-    unknown_0: NonNegativeInt
-    unknown_1: NonNegativeInt
-    unknown_2: NonNegativeInt
-    unknown_3: NonNegativeInt
-    unknown_4: NonNegativeInt
-    offset: NonNegativeInt
-    count: NonNegativeInt
-    unknown_5: NonNegativeInt
-    width: NonNegativeInt
-    height: NonNegativeInt
-    mode: NonNegativeInt
-    sub_headers: list[TEX9SubHeader]
-    bitmaps: list[Bitmap]
-    footer: TEX6
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        header_data = struct.unpack("11I", stream.read(44))
-
-        sub_headers = [TEX9SubHeader.model_validate_stream(stream) for _ in range(header_data[6])]
-
-        bitmaps = [
-            Bitmap.model_validate_stream(
-                stream, width=header_data[8], height=header_data[9], mode=header_data[10], lod=0
-            )
-            for _ in range(header_data[6])
-        ]
-
-        footer = TEX6.model_validate_stream(stream, count=header_data[6])
-
-        if stream.read(1) != b"":
-            message = "Parsing incomplete. Expected to reach EOF."
-            raise ValueError(message)
-
-        return cls(
-            unknown_0=header_data[0],
-            unknown_1=header_data[1],
-            unknown_2=header_data[2],
-            unknown_3=header_data[3],
-            unknown_4=header_data[4],
-            offset=header_data[5],
-            count=header_data[6],
-            unknown_5=header_data[7],
-            width=header_data[8],
-            height=header_data[9],
-            mode=header_data[10],
-            sub_headers=sub_headers,
-            bitmaps=bitmaps,
-            footer=footer,
-        )
-
-
-class TEX11(TEXBase):
-    pass
-
-
-class TEX(BaseModel):
-    signature: Literal[b"LOOP"]
-    version: Literal[2, 9, 11]
-    content: TEX2 | TEX9 | TEX11
-
-    @classmethod
-    def model_validate_file(cls, path: Path | str) -> Self:
-        # noinspection PyTypeChecker
-        return cls.model_validate_stream(BytesIO(Path(path).read_bytes()))
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
+    def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
         signature, version = struct.unpack("4sI", stream.read(8))
 
-        if version == 2:  # noqa: PLR2004
-            return cls(signature=signature, version=version, content=TEX2.model_validate_stream(stream))
+        stream.seek(0)
 
-        if version == 9:  # noqa: PLR2004
-            return cls(signature=signature, version=version, content=TEX9.model_validate_stream(stream))
+        if version == 2:
+            variant = TEX02.model_validate_stream(stream)
+        elif version == 7:
+            variant = TEX07.model_validate_stream(stream)
+        elif version == 9:
+            variant = TEX09.model_validate_stream(stream)
+        elif version == 11:
+            variant = TEX11.model_validate_stream(stream)
+        else:
+            raise ValueError(f"Unsupported version: {version}")
 
-        if version == 11:  # noqa: PLR2004
-            return cls(signature=signature, version=version, content=TEX11.model_validate_stream(stream))
+        return cls(meta_path=path, meta_size=size, variant=variant)
 
-        message = f"Unsupported version: {version}"
-        raise ValueError(message)
+    @property
+    def mipmaps(self) -> list["Mipmap"]:
+        if isinstance(self.variant, TEX02):
+            return [self.variant.content]
+        if isinstance(self.variant, TEX07) or isinstance(self.variant, TEX09):
+            return self.variant.item_contents
+        if isinstance(self.variant, TEX11):
+            return self.variant.content
+        raise ValueError(f"Unsupported variant: {self.variant}")
+
+
+class TEX02(BaseModel):
+    header: "TEX02Header"
+    content: "Mipmap"
+
+    @classmethod
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        header = TEX02Header.model_validate_stream(stream)
+        content = Mipmap.model_validate_stream(stream, width=header.width, height=header.height, mode=header.mode)
+
+        if stream.read(1) != b"":
+            raise ValueError("Parsing incomplete. Expected to reach EOF.")
+
+        return cls(header=header, content=content)
+
+
+class TEX07(BaseModel):
+    header: "TEX07Header"
+    item_headers: list["TEX07ItemHeader"]
+    item_contents: list["Mipmap"]
+    footer: "TEX06"
+
+    @classmethod
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        header = TEX07Header.model_validate_stream(stream)
+        item_headers = [TEX07ItemHeader.model_validate_stream(stream) for _ in range(header.count)]
+        item_contents = [
+            Mipmap.model_validate_stream(
+                stream,
+                width=header.width,
+                height=header.height,
+                mode=header.mode,
+            )
+            for _ in range(header.count)
+        ]
+        footer = TEX06.model_validate_stream(stream)
+
+        if stream.read(1) != b"":
+            raise ValueError("Parsing incomplete. Expected to reach EOF.")
+
+        return cls(header=header, item_headers=item_headers, item_contents=item_contents, footer=footer)
+
+
+class TEX09(BaseModel):
+    header: "TEX09Header"
+    item_headers: list["TEX09ItemHeader"]
+    item_contents: list["Mipmap"]
+    footer: "TEX06"
+
+    @classmethod
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        header = TEX09Header.model_validate_stream(stream)
+        item_headers = [TEX09ItemHeader.model_validate_stream(stream) for _ in range(header.count)]
+        item_contents = [
+            Mipmap.model_validate_stream(
+                stream,
+                width=header.width,
+                height=header.height,
+                mode=header.mode,
+            )
+            for _ in range(header.count)
+        ]
+        footer = TEX06.model_validate_stream(stream)
+
+        if stream.read(1) != b"":
+            raise ValueError("Parsing incomplete. Expected to reach EOF.")
+
+        return cls(header=header, item_headers=item_headers, item_contents=item_contents, footer=footer)
+
+
+class TEX11(BaseModel):
+    header: "TEX11Header"
+    content: list["Mipmap"]
+
+    @classmethod
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        header = TEX11Header.model_validate_stream(stream)
+        content = list()
+
+        for level in range(10):
+            position = stream.tell()
+
+            if stream.read(1) == b"":
+                break
+
+            stream.seek(position)
+
+            content.append(
+                Mipmap.model_validate_stream(
+                    stream,
+                    width=header.width,
+                    height=header.height,
+                    mode=header.mode,
+                )
+            )
+
+        if stream.read(1) != b"":
+            raise ValueError("Parsing incomplete. Expected to reach EOF.")
+
+        return cls(header=header, content=content)
+
+
+class TEX06(BaseModel):
+    header: "TEX06Header"
+    content: list["TEX06Content"]
+
+    @classmethod
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        header = TEX06Header.model_validate_stream(stream)
+        content = [TEX06Content.model_validate_stream(stream) for _ in range(header.count_x * header.count_y)]
+        return cls(header=header, content=content)
+
+
+class TEX02Header(StructModel):
+    _struct: ClassVar[Struct] = Struct("4sI8H")
+
+    signature: Literal[b"LOOP"]
+    version: Literal[2]
+    unknown_01: NonNegativeInt
+    unknown_02: NonNegativeInt
+    unknown_03: NonNegativeInt
+    unknown_04: NonNegativeInt
+    unknown_05: NonNegativeInt
+    width: NonNegativeInt
+    height: NonNegativeInt
+    mode: NonNegativeInt
+
+
+class TEX07Header(StructModel):
+    _struct: ClassVar[Struct] = Struct("4s12I")
+
+    signature: Literal[b"LOOP"]
+    version: Literal[7]
+    unknown_01: NonNegativeInt
+    unknown_02: NonNegativeInt
+    unknown_03: NonNegativeInt
+    unknown_04: NonNegativeInt
+    unknown_05: NonNegativeInt
+    offset: NonNegativeInt
+    count: NonNegativeInt
+    unknown_06: NonNegativeInt
+    width: NonNegativeInt
+    height: NonNegativeInt
+    mode: NonNegativeInt
+
+
+class TEX09Header(TEX07Header):
+    version: Literal[9]
+
+
+class TEX11Header(StructModel):
+    _struct: ClassVar[Struct] = Struct("4s4I6H")
+
+    signature: Literal[b"LOOP"]
+    version: Literal[11]
+    mode: NonNegativeInt
+    unknown_01: NonNegativeInt
+    unknown_02: NonNegativeInt
+    unknown_03: NonNegativeInt
+    width: NonNegativeInt
+    height: NonNegativeInt
+    unknown_04: NonNegativeInt
+    unknown_05: NonNegativeInt
+    unknown_06: NonNegativeInt
+
+
+class Mipmap(BaseModel):
+    class Header(BaseModel):
+        level: NonNegativeInt
+        mode: NonNegativeInt
+        width: NonNegativeInt
+        height: NonNegativeInt
+
+        @property
+        def bitmap_width(self) -> int:
+            return self.width // (1 << self.level)
+
+        @property
+        def bitmap_height(self) -> int:
+            return self.height // (1 << self.level)
+
+        @property
+        def bitmap_depth(self) -> int:
+            return {2: 2, 3: 4, 67: 4}[self.mode]
+
+    header: Header
+    bitmap: bytes
+
+    @classmethod
+    def model_validate_stream(cls, stream: BytesIO, width: int, height: int, mode: int, level: int = 0) -> Self:
+        header = cls.Header(level=level, mode=mode, width=width, height=height)
+        bitmap = stream.read(header.bitmap_width * header.bitmap_height * header.bitmap_depth)
+        return cls(header=header, bitmap=bitmap)
+
+
+class TEX06Header(StructModel):
+    _struct: ClassVar[Struct] = Struct("4sI4H2I")
+
+    signature: Literal[b"LOOP"]
+    version: Literal[6]
+    unknown_01: NonNegativeInt
+    unknown_02: NonNegativeInt
+    unknown_03: NonNegativeInt
+    unknown_04: NonNegativeInt
+    count_x: NonNegativeInt
+    count_y: NonNegativeInt
+
+
+class TEX06Content(StructModel):
+    _struct: ClassVar[Struct] = Struct("4I")
+
+    unknown_01: NonNegativeInt
+    unknown_02: NonNegativeInt
+    unknown_03: NonNegativeInt
+    unknown_04: NonNegativeInt
+
+
+class TEX07ItemHeader(StructModel):
+    _struct: ClassVar[Struct] = Struct("2I16H")
+
+    offset: NonNegativeInt
+    unknown_01: NonNegativeInt
+    width: NonNegativeInt
+    unknown_02: NonNegativeInt
+    height: NonNegativeInt
+    unknown_03: NonNegativeInt
+    unknown_04: NonNegativeInt
+    unknown_05: NonNegativeInt
+    unknown_06: NonNegativeInt
+    unknown_07: NonNegativeInt
+    unknown_08: NonNegativeInt
+    unknown_09: NonNegativeInt
+    unknown_10: NonNegativeInt
+    unknown_11: NonNegativeInt
+    unknown_12: NonNegativeInt
+    unknown_13: NonNegativeInt
+    unknown_14: NonNegativeInt
+    unknown_15: NonNegativeInt
+
+
+class TEX09ItemHeader(StructModel):
+    _struct: ClassVar[Struct] = Struct("2I4H4I")
+
+    offset: NonNegativeInt
+    mode: NonNegativeInt
+    unknown_01: NonNegativeInt
+    width: NonNegativeInt
+    height: NonNegativeInt
+    unknown_02: NonNegativeInt
+    unknown_03: NonNegativeInt
+    unknown_04: NonNegativeInt
+    unknown_05: NonNegativeInt
+    unknown_06: NonNegativeInt

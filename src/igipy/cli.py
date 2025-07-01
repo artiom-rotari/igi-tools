@@ -6,6 +6,7 @@ from .config import Settings
 from .dev.cli import app as igi_dev
 from .qvm.cli import app as igi_qvm
 from .res.cli import app as igi_res
+from .tex.cli import app as igi_tex
 from .wav.cli import app as igi_wav
 
 app = Typer(add_completion=False)
@@ -14,6 +15,7 @@ app.add_typer(igi_dev, name="dev")
 app.add_typer(igi_qvm, name="qvm")
 app.add_typer(igi_res, name="res")
 app.add_typer(igi_wav, name="wav")
+app.add_typer(igi_tex, name="tex")
 
 
 @app.command()

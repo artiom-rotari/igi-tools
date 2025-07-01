@@ -1,5 +1,7 @@
 from collections import defaultdict
+from itertools import chain
 
+import polars as pl
 from rich import print  # noqa: A004
 from typer import Typer
 
@@ -10,20 +12,28 @@ app = Typer(add_completion=False, short_help="Submodule with TEX commands")
 
 
 @app.command(short_help="List .tex")
-def dev() -> None:
+def dev() -> pl.DataFrame | None:
     settings = Settings.load()
 
     if not settings.is_valid():
         print("Configuration file is not valid.")
-        return
+        return None
 
-    metrics = defaultdict(list)
+    content = defaultdict(list)
 
     for directory in [settings.game_dir, settings.unpacked_dir]:
-        for src in directory.glob("**/*.tex"):
+        for src in chain(
+            directory.glob("**/*.tex"),
+            directory.glob("**/*.spr"),
+            directory.glob("**/*.pic"),
+        ):
+            print(src)
             tex = TEX.model_validate_file(src)
-            metrics[tex.version].append(src.as_posix())
 
-    for key, value in metrics.items():
-        print(f"[green]{key}[/green]: {len(value)}")
-        print(*value, sep="\n")
+            for mipmap in tex.mipmaps:
+                content["level"].append(mipmap.header.level)
+                content["mode"].append(mipmap.header.mode)
+                content["width"].append(mipmap.header.bitmap_width)
+                content["height"].append(mipmap.header.bitmap_height)
+
+    return pl.DataFrame(content)
