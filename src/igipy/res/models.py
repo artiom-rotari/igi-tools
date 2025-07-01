@@ -1,22 +1,28 @@
-import struct
 from io import BytesIO
-from pathlib import Path
-from typing import Literal, Self
+from struct import Struct
+from typing import ClassVar, Literal, Self
 
 from pydantic import BaseModel, Field, NonNegativeInt
 
+from igipy.models import FileModel, StructModel
 
-class ChunkHeader(BaseModel):
+
+def align(stream: BytesIO, padding: int) -> None:
+    padding_length = (padding - stream.tell() % padding) % padding
+    padding_data = stream.read(padding_length)
+
+    if padding_data != b"\x00" * padding_length:
+        message = f"Expected padding data to be null bytes: {padding_data}"
+        raise ValueError(message)
+
+
+class ChunkHeader(StructModel):
+    _struct: ClassVar[Struct] = Struct("4s3I")
+
     signature: bytes = Field(min_length=4, max_length=4)
     length: NonNegativeInt
     padding: Literal[4, 32]
     next_position: NonNegativeInt
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        # noinspection PyTypeChecker
-        data = struct.unpack("4s3I", stream.read(16))
-        return cls(signature=data[0], length=data[1], padding=data[2], next_position=data[3])
 
 
 class Chunk(BaseModel):
@@ -24,17 +30,37 @@ class Chunk(BaseModel):
     content: bytes
 
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO, header: ChunkHeader) -> Self:
-        padding_length = (header.padding - stream.tell() % header.padding) % header.padding
-        padding_data = stream.read(padding_length)
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        # noinspection PyTypeChecker
+        header_class: ChunkHeader = cls.__pydantic_fields__["header"].annotation
+        header = header_class.model_validate_stream(stream)
 
-        if padding_data != b"\x00" * padding_length:
-            message = f"Expected padding data to be null bytes: {padding_data}"
-            raise ValueError(message)
+        align(stream, header.padding)
 
         content = stream.read(header.length)
-
         return cls(header=header, content=content)
+
+
+class ChunkPair(BaseModel):
+    chunk_a: Chunk
+    chunk_b: Chunk
+
+    @classmethod
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        # noinspection PyTypeChecker
+        chunk_a_class: Chunk = cls.__pydantic_fields__["chunk_a"].annotation
+        # noinspection PyTypeChecker
+        chunk_b_class: Chunk = cls.__pydantic_fields__["chunk_b"].annotation
+
+        chunks = []
+
+        for chunk_class in (chunk_a_class, chunk_b_class):
+            position = stream.tell()
+            chunk = chunk_class.model_validate_stream(stream)
+            chunks.append(chunk)
+            stream.seek(position + chunk.header.next_position)
+
+        return cls(**dict(zip(("chunk_a", "chunk_b"), chunks, strict=True)))
 
 
 class RESChunkNAMEHeader(ChunkHeader):
@@ -60,11 +86,12 @@ class RESChunkBODY(Chunk):
             return self.content
         if self.header.signature in {b"PATH", b"CSTR"}:
             return self.content.decode().removesuffix("\x00")
-        message = f"Unsupported chunk signature: {self.header.signature}"
-        raise ValueError(message)
+        raise ValueError(f"Unsupported chunk signature: {self.header.signature}")
 
 
-class RESHeader(BaseModel):
+class RESHeader(StructModel):
+    _struct: ClassVar[Struct] = Struct("4s3I4s")
+
     signature: Literal[b"ILFF"]
     length: NonNegativeInt
     padding: Literal[4, 32]
@@ -72,83 +99,56 @@ class RESHeader(BaseModel):
     content_signature: Literal[b"IRES"]
 
 
-class RESFile(BaseModel):
-    name: RESChunkNAME
-    body: RESChunkBODY
+class RESFile(ChunkPair):
+    chunk_a: RESChunkNAME
+    chunk_b: RESChunkBODY
 
     def is_file(self) -> bool:
-        return self.body.header.signature == b"BODY"
+        return self.chunk_b.header.signature == b"BODY"
 
     def is_text(self) -> bool:
-        return self.body.header.signature == b"CSTR"
+        return self.chunk_b.header.signature == b"CSTR"
 
     def is_path(self) -> bool:
-        return self.body.header.signature == b"PATH"
+        return self.chunk_b.header.signature == b"PATH"
 
     @property
     def file_name(self) -> str:
         if not self.is_file():
-            message = f"Is not a file: {self.name.get_cleaned_content()}"
-            raise ValueError(message)
-        return self.name.get_cleaned_content().removeprefix("LOCAL:")
+            raise ValueError(f"Is not a file: {self.name.get_cleaned_content()}")
+        return self.chunk_a.get_cleaned_content().removeprefix("LOCAL:")
 
     @property
     def file_content(self) -> bytes | str:
         if not self.is_file():
-            message = f"Is not a file: {self.name.get_cleaned_content()}"
-            raise ValueError(message)
-        return self.body.get_cleaned_content()
+            raise ValueError(f"Is not a file: {self.name.get_cleaned_content()}")
+        return self.chunk_b.get_cleaned_content()
 
 
-class RES(BaseModel):
+class RES(FileModel):
     header: RESHeader
     content: list[RESFile]
 
     @classmethod
-    def model_validate_file(cls, path: Path | str) -> Self:
-        # noinspection PyTypeChecker
-        return cls.model_validate_stream(BytesIO(Path(path).read_bytes()))
+    def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
+        header = RESHeader.model_validate_stream(stream)
 
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        # noinspection PyTypeChecker
-        header_data = struct.unpack("4s3I4s", stream.read(20))
-
-        header = RESHeader(
-            signature=header_data[0],
-            length=header_data[1],
-            padding=header_data[2],
-            next_position=header_data[3],
-            content_signature=header_data[4],
-        )
-
-        padding_length = (header.padding - stream.tell() % header.padding) % header.padding
-        padding_data = stream.read(padding_length)
-
-        if padding_data != b"\x00" * padding_length:
-            message = f"Expected padding data to be null bytes: {padding_data}"
-            raise ValueError(message)
+        align(stream, header.padding)
 
         content = []
 
         while True:
-            position = stream.tell()
-            name_chunk = RESChunkNAME.model_validate_stream(stream, RESChunkNAMEHeader.model_validate_stream(stream))
-            stream.seek(position + name_chunk.header.next_position)
+            res_file = RESFile.model_validate_stream(stream)
 
-            position = stream.tell()
-            body_chunk = RESChunkBODY.model_validate_stream(stream, RESChunkBODYHeader.model_validate_stream(stream))
-            stream.seek(position + body_chunk.header.next_position)
+            content.append(res_file)
 
-            content.append(RESFile(name=name_chunk, body=body_chunk))
-
-            if body_chunk.header.next_position == 0:
+            if res_file.chunk_b.header.next_position == 0:
                 break
 
-        return cls(header=header, content=content)
+        return cls(meta_path=path, meta_size=size, header=header, content=content)
 
     def is_file_container(self) -> bool:
-        return all(res_file.body.header.signature in {b"BODY", b"PATH"} for res_file in self.content)
+        return all(res_file.chunk_b.header.signature in {b"BODY", b"PATH"} for res_file in self.content)
 
     def is_text_container(self) -> bool:
-        return all(res_file.body.header.signature == b"CSTR" for res_file in self.content)
+        return all(res_file.chunk_b.header.signature == b"CSTR" for res_file in self.content)
