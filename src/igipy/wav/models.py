@@ -1,11 +1,11 @@
-import struct
 import wave
 from io import BytesIO
-from typing import Literal, Self
+from struct import Struct
+from typing import ClassVar, Literal, Self
 
-from pydantic import BaseModel, NonNegativeInt
+from pydantic import NonNegativeInt
 
-from igipy.models import FileModel
+from igipy.models import FileModel, StructModel
 from igipy.wav import adpcm
 
 
@@ -42,7 +42,9 @@ class WAV(FileModel):
         return stream
 
 
-class WAVHeader(BaseModel):
+class WAVHeader(StructModel):
+    _struct: ClassVar[Struct] = Struct("4s4H2I")
+
     signature: Literal[b"ILSF"]
     sound_pack: Literal[0, 1, 2, 3]
     sample_width: Literal[16]
@@ -50,10 +52,3 @@ class WAVHeader(BaseModel):
     unknown: NonNegativeInt
     framerate: Literal[11025, 22050, 44100]
     sample_count: NonNegativeInt
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        cls_struct = struct.Struct("4s4H2I")
-        cls_fields = cls.__pydantic_fields__.keys()
-        cls_values = cls_struct.unpack(stream.read(cls_struct.size))
-        return cls(**dict(zip(cls_fields, cls_values, strict=True)))
