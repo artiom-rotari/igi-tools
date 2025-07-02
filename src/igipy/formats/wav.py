@@ -5,11 +5,11 @@ from typing import ClassVar, Literal, Self
 
 from pydantic import NonNegativeInt
 
-from igipy.encoders import adpcm
-from igipy.models import FileModel, StructModel
+from ..encoders import adpcm
+from . import base
 
 
-class WAV(FileModel):
+class WAV(base.FileModel):
     header: "WAVHeader"
     content: bytes
 
@@ -42,7 +42,7 @@ class WAV(FileModel):
         return stream
 
 
-class WAVHeader(StructModel):
+class WAVHeader(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4s4H2I")
 
     signature: Literal[b"ILSF"]

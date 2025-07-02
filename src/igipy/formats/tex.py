@@ -5,10 +5,10 @@ from typing import ClassVar, Literal, Self, Union
 
 from pydantic import BaseModel, NonNegativeInt
 
-from igipy.models import FileModel, StructModel
+from igipy.formats import base
 
 
-class TEX(FileModel):
+class TEX(base.FileModel):
     variant: Union["TEX02", "TEX07", "TEX09", "TEX11"]
 
     @classmethod
@@ -153,7 +153,7 @@ class TEX06(BaseModel):
         return cls(header=header, content=content)
 
 
-class TEX02Header(StructModel):
+class TEX02Header(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4sI8H")
 
     signature: Literal[b"LOOP"]
@@ -168,7 +168,7 @@ class TEX02Header(StructModel):
     mode: NonNegativeInt
 
 
-class TEX07Header(StructModel):
+class TEX07Header(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4s12I")
 
     signature: Literal[b"LOOP"]
@@ -190,7 +190,7 @@ class TEX09Header(TEX07Header):
     version: Literal[9]
 
 
-class TEX11Header(StructModel):
+class TEX11Header(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4s4I6H")
 
     signature: Literal[b"LOOP"]
@@ -235,7 +235,7 @@ class Mipmap(BaseModel):
         return cls(header=header, bitmap=bitmap)
 
 
-class TEX06Header(StructModel):
+class TEX06Header(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4sI4H2I")
 
     signature: Literal[b"LOOP"]
@@ -248,7 +248,7 @@ class TEX06Header(StructModel):
     count_y: NonNegativeInt
 
 
-class TEX06Content(StructModel):
+class TEX06Content(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4I")
 
     unknown_01: NonNegativeInt
@@ -257,7 +257,7 @@ class TEX06Content(StructModel):
     unknown_04: NonNegativeInt
 
 
-class TEX07ItemHeader(StructModel):
+class TEX07ItemHeader(base.StructModel):
     _struct: ClassVar[Struct] = Struct("2I16H")
 
     offset: NonNegativeInt
@@ -280,7 +280,7 @@ class TEX07ItemHeader(StructModel):
     unknown_15: NonNegativeInt
 
 
-class TEX09ItemHeader(StructModel):
+class TEX09ItemHeader(base.StructModel):
     _struct: ClassVar[Struct] = Struct("2I4H4I")
 
     offset: NonNegativeInt

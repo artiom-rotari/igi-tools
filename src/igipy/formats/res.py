@@ -5,7 +5,7 @@ from zipfile import ZipFile
 
 from pydantic import BaseModel, Field, NonNegativeInt
 
-from igipy.models import FileModel, StructModel
+from . import base
 
 
 def align(stream: BytesIO, padding: int) -> None:
@@ -17,7 +17,7 @@ def align(stream: BytesIO, padding: int) -> None:
         raise ValueError(message)
 
 
-class ChunkHeader(StructModel):
+class ChunkHeader(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4s3I")
 
     signature: bytes = Field(min_length=4, max_length=4)
@@ -90,7 +90,7 @@ class RESChunkBODY(Chunk):
         raise ValueError(f"Unsupported chunk signature: {self.header.signature}")
 
 
-class RESHeader(StructModel):
+class RESHeader(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4s3I4s")
 
     signature: Literal[b"ILFF"]
@@ -126,7 +126,7 @@ class RESFile(ChunkPair):
         return self.chunk_b.get_cleaned_content()
 
 
-class RES(FileModel):
+class RES(base.FileModel):
     header: RESHeader
     content: list[RESFile]
 
