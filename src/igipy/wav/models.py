@@ -5,8 +5,8 @@ from typing import ClassVar, Literal, Self
 
 from pydantic import NonNegativeInt
 
+from igipy.encoders import adpcm
 from igipy.models import FileModel, StructModel
-from igipy.wav import adpcm
 
 
 class WAV(FileModel):
