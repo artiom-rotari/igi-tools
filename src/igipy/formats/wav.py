@@ -1,5 +1,6 @@
 import wave
 from io import BytesIO
+from pathlib import Path
 from struct import Struct
 from typing import ClassVar, Literal, Self
 
@@ -25,12 +26,13 @@ class WAV(base.FileModel):
         if self.header.sound_pack in {0, 1}:
             return self.content
         if self.header.sound_pack in {2, 3}:
-            return adpcm.decode(self.samples, channels=self.header.channels)
+            return adpcm.decode(self.content, channels=self.header.channels)
 
         raise ValueError(f"Unsupported sound pack: {self.header.sound_pack}")
 
-    def to_wav(self, stream: BytesIO) -> BytesIO:
+    def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
         samples = self.samples
+        path = path.with_suffix(".wav")
 
         with wave.open(stream, "w") as wave_stream:
             wave_stream.setnchannels(self.header.channels)
@@ -38,9 +40,7 @@ class WAV(base.FileModel):
             wave_stream.setframerate(self.header.framerate)
             wave_stream.writeframesraw(samples)
 
-        stream.seek(0)
-
-        return stream
+        return path, stream
 
 
 class WAVHeader(base.StructModel):

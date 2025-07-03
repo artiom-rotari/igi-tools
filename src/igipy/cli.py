@@ -11,7 +11,7 @@ from pydantic_settings import BaseSettings
 from rich import print  # noqa: A004
 from tabulate import tabulate
 
-from . import __version__, formats
+from . import __version__, formats, utils
 
 app = typer.Typer(add_completion=False)
 
@@ -183,12 +183,7 @@ def callback(
         raise typer.Exit(0)
 
 
-res_app = typer.Typer(
-    name="res",
-    short_help="Submodule with RES commands",
-    add_completion=False,
-)
-
+res_app = typer.Typer(name="res", short_help="Submodule with RES commands", add_completion=False)
 app.add_typer(res_app)
 
 
@@ -221,12 +216,7 @@ def res_convert_all(dry: bool = True) -> None:  # noqa: FBT001, FBT002
             dst.write_bytes(dst_stream.getvalue())
 
 
-wav_app = typer.Typer(
-    name="wav",
-    short_help="Submodule with WAV commands",
-    add_completion=False,
-)
-
+wav_app = typer.Typer(name="wav", short_help="Submodule with WAV commands", add_completion=False)
 app.add_typer(wav_app)
 
 
@@ -280,24 +270,18 @@ def wav_convert(src: Path, dst: Path) -> BytesIO | None:
     name="convert-all",
     short_help="Convert all .wav files found in game_dir and unpacked dir to regular .wav files",
 )
-def wav_convert_all() -> None:
+def wav_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
     settings = Config.load()
     settings.is_valid(exit_on_error=True)
 
-    print(f"[green]Converting .wav files from {settings.game_dir} to {settings.convert_dir}[/green]")
-
-    for src in settings.game_dir.glob("**/*.wav"):
-        dst = settings.convert_dir.joinpath(src.relative_to(settings.game_dir)).with_suffix(".wav")
-        dst.parent.mkdir(parents=True, exist_ok=True)
-
-        wav_convert(src, dst)
-
-    print(f"[green]Converting .wav files from {settings.archive_dir} to {settings.convert_dir}[/green]")
-
-    for src in settings.archive_dir.glob("**/*.wav"):
-        dst = settings.convert_dir.joinpath(src.relative_to(settings.archive_dir)).with_suffix(".wav")
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        wav_convert(src, dst)
+    utils.convert_all(
+        patterns=["**/*.wav"],
+        formater=formats.WAV,
+        src_dir=settings.game_dir,
+        zip_dir=settings.archive_dir,
+        dst_dir=settings.convert_dir,
+        dry=dry,
+    )
 
 
 qvm_app = typer.Typer(
