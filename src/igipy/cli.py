@@ -1,5 +1,4 @@
 from collections import defaultdict
-from io import BytesIO
 from itertools import chain
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
@@ -196,24 +195,19 @@ def res_callback(ctx: typer.Context) -> None:
 
 @res_app.command(
     name="convert-all",
-    short_help="Convert all .res files to .zip or .json files",
+    short_help="Convert all .res files found in game_dir to .zip or .json files",
 )
-def res_convert_all(dry: bool = True) -> None:  # noqa: FBT001, FBT002
+def res_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
     settings = Config.load()
     settings.is_valid(exit_on_error=True)
 
-    for src in settings.game_dir.glob("**/*.res"):
-        res = formats.RES.model_validate_file(src)
-        dst = settings.archive_dir.joinpath(src.relative_to(settings.game_dir))
-        dst, dst_stream = res.model_dump_file(dst)
-
-        typer.echo(
-            f'Convert: "{typer.style(src.as_posix(), fg="green")}" to "{typer.style(dst.as_posix(), fg="yellow")}"'
-        )
-
-        if not dry:
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            dst.write_bytes(dst_stream.getvalue())
+    utils.convert_all(
+        patterns=["**/*.res"],
+        formater=formats.RES,
+        src_dir=settings.game_dir,
+        dst_dir=settings.archive_dir,
+        dry=dry,
+    )
 
 
 wav_app = typer.Typer(name="wav", short_help="Submodule with WAV commands", add_completion=False)
@@ -228,47 +222,8 @@ def wav_callback(ctx: typer.Context) -> None:
 
 
 @wav_app.command(
-    name="convert",
-    short_help="Convert InnerLoop .wav file to regular .wav file",
-)
-def wav_convert(src: Path, dst: Path) -> BytesIO | None:
-    if isinstance(src, Path) and (not src.exists() or not src.is_file()):
-        print(f"{src} not found or is not a file.")
-        return None
-
-    if isinstance(dst, Path) and dst.exists():
-        print(f"{dst} already exists.")
-        return None
-
-    if isinstance(src, Path):
-        wav = formats.WAV.model_validate_file(src)
-    elif isinstance(src, BytesIO):
-        wav = formats.WAV.model_validate_stream(src)
-    else:
-        print(f"Unsupported source type: {type(src)}")
-        return None
-
-    if isinstance(dst, Path):
-        dst_stream = BytesIO()
-    elif isinstance(dst, BytesIO):
-        dst_stream = dst
-    else:
-        print(f"Unsupported destination type: {type(dst)}")
-        return None
-
-    wav.to_wav(dst_stream)
-
-    if isinstance(dst, Path):
-        # noinspection PyTypeChecker
-        dst.write_bytes(dst_stream.getvalue())
-        print(f"Created {dst.as_posix()}")
-
-    return dst_stream
-
-
-@wav_app.command(
     name="convert-all",
-    short_help="Convert all .wav files found in game_dir and unpacked dir to regular .wav files",
+    short_help="Convert all .wav files found in game_dir and archive_dir to regular .wav files",
 )
 def wav_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
     settings = Config.load()
@@ -284,12 +239,7 @@ def wav_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
     )
 
 
-qvm_app = typer.Typer(
-    name="qvm",
-    short_help="Submodule with QVM commands",
-    add_completion=False,
-)
-
+qvm_app = typer.Typer(name="qvm", short_help="Submodule with QVM commands", add_completion=False)
 app.add_typer(qvm_app)
 
 
@@ -301,39 +251,20 @@ def qvm_callback(ctx: typer.Context) -> None:
 
 
 @qvm_app.command(
-    name="convert",
-    short_help="Convert .qvm to .qsc file",
-)
-def qvm_convert(src: Path, dst: Path) -> None:
-    if not src.exists() and src.is_file():
-        print(f"{src} is not a file.")
-        return
-
-    if dst.exists():
-        print(f"{dst} already exists.")
-        return
-
-    qvm = formats.QVM.model_validate_file(src)
-    qsc = qvm.get_statement_list().get_token()
-
-    dst.write_text(qsc)
-    print(f"Created {dst.as_posix()}")
-
-
-@qvm_app.command(
     name="convert-all",
     short_help="Convert all .qvm files found in game_dir to .qsc file",
 )
-def qvm_convert_all() -> None:
+def qvm_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
     settings = Config.load()
     settings.is_valid(exit_on_error=True)
 
-    print(f"[green]Converting .qvm files from {settings.game_dir} to {settings.convert_dir}[/green]")
-
-    for src_filepath in settings.game_dir.glob("**/*.qvm"):
-        dst_filepath = settings.convert_dir.joinpath(src_filepath.relative_to(settings.game_dir)).with_suffix(".qsc")
-        dst_filepath.parent.mkdir(parents=True, exist_ok=True)
-        qvm_convert(src_filepath, dst_filepath)
+    utils.convert_all(
+        patterns=["**/*.qvm"],
+        formater=formats.QVM,
+        src_dir=settings.game_dir,
+        dst_dir=settings.convert_dir,
+        dry=dry,
+    )
 
 
 tex_app = typer.Typer(

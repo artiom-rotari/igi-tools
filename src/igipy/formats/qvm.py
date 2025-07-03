@@ -6,6 +6,8 @@ from typing import Any, BinaryIO, Literal, Optional, Self
 
 from pydantic import BaseModel, NonNegativeInt
 
+from igipy.formats import FileModel
+
 QVMMajorVersion = Literal[8]
 
 QVMMinorVersion = Literal[5, 7]
@@ -995,11 +997,18 @@ class QVMInstructionDict(BaseModel):
         }
 
 
-class QVM(BaseModel):
+class QVM(FileModel):
     header: QVMHeader
     identifiers: QVMStringList
     strings: QVMStringList
     instructions: QVMInstructionDict
+
+    @classmethod
+    def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
+        instance = cls.model_validate_bytes(data=stream.read())
+        instance.meta_path = path
+        instance.meta_size = size
+        return instance
 
     @classmethod
     def model_validate_bytes(cls, data: bytes) -> Self:
@@ -1016,10 +1025,10 @@ class QVM(BaseModel):
 
         return cls(header=header, identifiers=identifiers, strings=strings, instructions=instructions)
 
-    @classmethod
-    def model_validate_file(cls, file: str | Path) -> Self:
-        data = Path(file).read_bytes()
-        return cls.model_validate_bytes(data)
+    def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
+        path = path.with_suffix(".qsc")
+        stream.write(self.get_statement_list().get_token().encode())
+        return path, stream
 
     def get_statement_list(self) -> "StatementList":
         return StatementList.from_instructions(
