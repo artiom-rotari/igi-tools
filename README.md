@@ -46,8 +46,8 @@ This command will create in the current directory a file - `igi.json`. Open this
 ```
 {
   "game_dir": "C:/Users/artiom.rotari/Desktop/ProjectIGI",
-  "unpacked_dir": "unpacked",
-  "converted_dir": "converted"
+  "archive_dir": "unpacked",
+  "convert_dir": "converted"
 }
 ```
 

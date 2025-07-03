@@ -1,3 +1,4 @@
+import json
 from io import BytesIO
 from struct import Struct
 from typing import ClassVar, Literal, Self
@@ -72,7 +73,7 @@ class RESChunkNAME(Chunk):
     header: RESChunkNAMEHeader
 
     def get_cleaned_content(self) -> str:
-        return self.content.decode().removesuffix("\x00")
+        return self.content.removesuffix(b"\x00").decode("latin1")
 
 
 class RESChunkBODYHeader(ChunkHeader):
@@ -86,7 +87,7 @@ class RESChunkBODY(Chunk):
         if self.header.signature == b"BODY":
             return self.content
         if self.header.signature in {b"PATH", b"CSTR"}:
-            return self.content.decode().removesuffix("\x00")
+            return self.content.removesuffix(b"\x00").decode("latin1")
         raise ValueError(f"Unsupported chunk signature: {self.header.signature}")
 
 
@@ -152,7 +153,7 @@ class RES(base.FileModel):
         return all(res_file.chunk_b.header.signature in {b"BODY", b"PATH"} for res_file in self.content)
 
     def is_text_container(self) -> bool:
-        return all(res_file.chunk_b.header.signature == b"CSTR" for res_file in self.content)
+        return all(res_file.chunk_b.header.signature in {b"CSTR", b"PATH"} for res_file in self.content)
 
     def to_zip(self, stream: BytesIO | None = None) -> BytesIO:
         if not self.is_file_container():
@@ -165,6 +166,25 @@ class RES(base.FileModel):
                 if res_file.is_file():
                     zip_stream.writestr(res_file.file_name, res_file.file_content)
 
+        stream.seek(0)
+
+        return stream
+
+    def to_json(self, stream: BytesIO | None = None) -> BytesIO:
+        if not self.is_text_container():
+            raise ValueError("Current is not a text container")
+
+        content = [
+            {
+                "key": res_file.chunk_a.get_cleaned_content(),
+                "value": res_file.chunk_b.get_cleaned_content(),
+            }
+            for res_file in self.content
+            if res_file.is_text()
+        ]
+
+        stream = stream or BytesIO()
+        stream.write(json.dumps(content, indent=4).encode())
         stream.seek(0)
 
         return stream

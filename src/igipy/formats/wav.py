@@ -5,7 +5,8 @@ from typing import ClassVar, Literal, Self
 
 from pydantic import NonNegativeInt
 
-from ..encoders import adpcm
+from igipy.encoders import adpcm
+
 from . import base
 
 

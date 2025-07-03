@@ -7,6 +7,11 @@ from pydantic import BaseModel, NonNegativeInt
 
 from igipy.formats import base
 
+TEX_VERSION_02 = 2
+TEX_VERSION_07 = 7
+TEX_VERSION_09 = 9
+TEX_VERSION_11 = 11
+
 
 class TEX(base.FileModel):
     variant: Union["TEX02", "TEX07", "TEX09", "TEX11"]
@@ -17,13 +22,13 @@ class TEX(base.FileModel):
 
         stream.seek(0)
 
-        if version == 2:
+        if version == TEX_VERSION_02:
             variant = TEX02.model_validate_stream(stream)
-        elif version == 7:
+        elif version == TEX_VERSION_07:
             variant = TEX07.model_validate_stream(stream)
-        elif version == 9:
+        elif version == TEX_VERSION_09:
             variant = TEX09.model_validate_stream(stream)
-        elif version == 11:
+        elif version == TEX_VERSION_11:
             variant = TEX11.model_validate_stream(stream)
         else:
             raise ValueError(f"Unsupported version: {version}")
@@ -34,7 +39,7 @@ class TEX(base.FileModel):
     def mipmaps(self) -> list["Mipmap"]:
         if isinstance(self.variant, TEX02):
             return [self.variant.content]
-        if isinstance(self.variant, TEX07) or isinstance(self.variant, TEX09):
+        if isinstance(self.variant, (TEX07, TEX09)):
             return self.variant.item_contents
         if isinstance(self.variant, TEX11):
             return self.variant.content
@@ -117,7 +122,7 @@ class TEX11(BaseModel):
     @classmethod
     def model_validate_stream(cls, stream: BytesIO) -> Self:
         header = TEX11Header.model_validate_stream(stream)
-        content = list()
+        content = []
 
         for level in range(10):
             position = stream.tell()
@@ -133,6 +138,7 @@ class TEX11(BaseModel):
                     width=header.width,
                     height=header.height,
                     mode=header.mode,
+                    level=level,
                 )
             )
 
