@@ -200,61 +200,8 @@ def res_callback(ctx: typer.Context) -> None:
 
 
 @res_app.command(
-    name="unpack",
-    short_help="Unpack .res",
-)
-def res_unpack(src: Path, dst: Path) -> None:
-    if not src.exists() and src.is_file():
-        print(f"Can not read {src}. Is not a file.")
-        return
-
-    if dst.exists() and dst.is_file():
-        print(f"Can not unpack to {dst}. Is a file.")
-        return
-
-    res = formats.RES.model_validate_file(src)
-
-    if res.is_text_container():
-        print(f"{src} skipped because it is a text container.")
-        return
-
-    if res.is_file_container():
-        for res_file in res.content:
-            if not res_file.is_file():
-                continue
-
-            res_file_path = dst.joinpath(res_file.file_name)
-            res_file_path.parent.mkdir(parents=True, exist_ok=True)
-
-            if res_file_path.exists():
-                print(f"{res_file_path} already exists.")
-                continue
-
-            res_file_path.write_bytes(res_file.file_content)
-            print(f"Created {res_file_path}")
-
-
-@res_app.command(
-    name="unpack-all",
-    short_help="Unpack all .res files found in game_dir",
-)
-def res_unpack_all() -> None:
-    settings = Config.load()
-
-    if not settings.is_valid():
-        print("Configuration file is not valid.")
-        return
-
-    for src_filepath in settings.game_dir.glob("**/*.res"):
-        dst_filepath = settings.archive_dir.joinpath(src_filepath.relative_to(settings.game_dir))
-        dst_filepath.mkdir(parents=True, exist_ok=True)
-        print(f"[green]Unpacking {src_filepath} to {dst_filepath}[/green]")
-        res_unpack(src_filepath, dst_filepath)
-
-
-@res_app.command(
     name="convert-all",
-    short_help="Convert all .res files to .zip files",
+    short_help="Convert all .res files to .zip or .json files",
 )
 def res_convert_all(dry: bool = True) -> None:  # noqa: FBT001, FBT002
     settings = Config.load()
@@ -262,22 +209,12 @@ def res_convert_all(dry: bool = True) -> None:  # noqa: FBT001, FBT002
 
     for src in settings.game_dir.glob("**/*.res"):
         res = formats.RES.model_validate_file(src)
-
-        if res.is_text_container():
-            dst = settings.archive_dir.joinpath(src.relative_to(settings.game_dir)).with_suffix(".json")
-            res_method = formats.RES.to_json.__name__
-        elif res.is_file_container():
-            dst = settings.archive_dir.joinpath(src.relative_to(settings.game_dir)).with_suffix(".zip")
-            res_method = formats.RES.to_zip.__name__
-        else:
-            typer.echo(typer.style(f'Can not convert "{src.as_posix()}"', fg="red"))
-            raise typer.Exit(0)
+        dst = settings.archive_dir.joinpath(src.relative_to(settings.game_dir))
+        dst, dst_stream = res.model_dump_file(dst)
 
         typer.echo(
             f'Convert: "{typer.style(src.as_posix(), fg="green")}" to "{typer.style(dst.as_posix(), fg="yellow")}"'
         )
-
-        dst_stream = getattr(res, res_method)()
 
         if not dry:
             dst.parent.mkdir(parents=True, exist_ok=True)

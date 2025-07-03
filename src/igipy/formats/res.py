@@ -1,5 +1,6 @@
 import json
 from io import BytesIO
+from pathlib import Path
 from struct import Struct
 from typing import ClassVar, Literal, Self
 from zipfile import ZipFile
@@ -149,42 +150,30 @@ class RES(base.FileModel):
 
         return cls(meta_path=path, meta_size=size, header=header, content=content)
 
-    def is_file_container(self) -> bool:
-        return all(res_file.chunk_b.header.signature in {b"BODY", b"PATH"} for res_file in self.content)
+    def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
+        if all(res_file.chunk_b.header.signature in {b"BODY", b"PATH"} for res_file in self.content):
+            path = path.with_suffix(".zip")
 
-    def is_text_container(self) -> bool:
-        return all(res_file.chunk_b.header.signature in {b"CSTR", b"PATH"} for res_file in self.content)
+            with ZipFile(stream, "w") as zip_stream:
+                for res_file in self.content:
+                    if res_file.is_file():
+                        zip_stream.writestr(res_file.file_name, res_file.file_content)
 
-    def to_zip(self, stream: BytesIO | None = None) -> BytesIO:
-        if not self.is_file_container():
-            raise ValueError("Current is not a file container")
+        elif all(res_file.chunk_b.header.signature in {b"CSTR", b"PATH"} for res_file in self.content):
+            path = path.with_suffix(".json")
 
-        stream = stream or BytesIO()
+            content = [
+                {
+                    "key": res_file.chunk_a.get_cleaned_content(),
+                    "value": res_file.chunk_b.get_cleaned_content(),
+                }
+                for res_file in self.content
+                if res_file.is_text()
+            ]
 
-        with ZipFile(stream, "w") as zip_stream:
-            for res_file in self.content:
-                if res_file.is_file():
-                    zip_stream.writestr(res_file.file_name, res_file.file_content)
+            stream.write(json.dumps(content, indent=4).encode())
 
-        stream.seek(0)
+        else:
+            raise ValueError("Current is neither a file container nor a text container")
 
-        return stream
-
-    def to_json(self, stream: BytesIO | None = None) -> BytesIO:
-        if not self.is_text_container():
-            raise ValueError("Current is not a text container")
-
-        content = [
-            {
-                "key": res_file.chunk_a.get_cleaned_content(),
-                "value": res_file.chunk_b.get_cleaned_content(),
-            }
-            for res_file in self.content
-            if res_file.is_text()
-        ]
-
-        stream = stream or BytesIO()
-        stream.write(json.dumps(content, indent=4).encode())
-        stream.seek(0)
-
-        return stream
+        return path, stream

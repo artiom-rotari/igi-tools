@@ -22,6 +22,16 @@ class FileModel(BaseModel):
     def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
         raise NotImplementedError
 
+    def model_dump_file(self, path: Path | None = None, stream: BytesIO | None = None) -> tuple[Path, BytesIO]:
+        path = path or (Path(self.meta_path.name) if self.meta_path else Path("undefined"))
+        stream = stream or BytesIO()
+        path, stream = self.model_dump_stream(path, stream)
+        stream.seek(0)
+        return path, stream
+
+    def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
+        raise NotImplementedError
+
 
 class StructModel(BaseModel):
     _struct: ClassVar[Struct] = None
