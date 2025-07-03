@@ -6,7 +6,7 @@ from typing import ClassVar, Literal, Self
 
 from pydantic import NonNegativeInt
 
-from igipy.encoders import adpcm
+from igipy.codec import adpcm
 
 from . import base
 
