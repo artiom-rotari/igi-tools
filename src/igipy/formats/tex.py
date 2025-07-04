@@ -3,6 +3,7 @@ from io import BytesIO
 from struct import Struct
 from typing import ClassVar, Literal, Self, Union
 
+import numpy as np
 from pydantic import BaseModel, NonNegativeInt
 
 from . import base
@@ -41,7 +42,7 @@ class TEX(base.FileModel):
             return self.variant.model_dump_stream(path, stream)
 
         if isinstance(self.variant, (TEX07, TEX09)):
-            raise base.FileIgnored("Not implemented yet")
+            return self.variant.model_dump_stream(path, stream)
 
         if isinstance(self.variant, TEX11):
             return self.variant.model_dump_stream(path, stream)
@@ -112,8 +113,36 @@ class TEX07(BaseModel):
 
         return cls(header=header, item_headers=item_headers, item_contents=item_contents, footer=footer)
 
+    def model_dump_stream(self, path: base.Path, stream: BytesIO) -> tuple[base.Path, BytesIO]:
+        path = path.with_suffix(".tga")
+        bitmap = self.bitmap
 
-class TEX09(BaseModel):
+        TGA.from_raw_bytes(
+            width=bitmap.shape[1],
+            height=bitmap.shape[0],
+            content=bitmap.tobytes(),
+            pixel_format={2: "ARGB1555", 3: "ARGB8888", 67: "ARGB8888"}[self.header.mode],
+        ).model_dump_stream(stream=stream)
+
+        return path, stream
+
+    @property
+    def bitmap(self) -> np.ndarray:
+        tiles: list[np.ndarray] = [tile.bitmap_np for tile in self.item_contents]
+        tiles_cols: int = self.footer.header.count_x
+        tiles_rows: int = self.footer.header.count_y
+
+        tile_height, tile_width = tiles[0].shape
+        full_image = np.zeros((tiles_rows * tile_height, tiles_cols * tile_width), dtype=tiles[0].dtype)
+
+        for index, tile in enumerate(tiles):
+            row, col = divmod(index, tiles_cols)
+            full_image[row * tile_height : (row + 1) * tile_height, col * tile_width : (col + 1) * tile_width] = tile
+
+        return np.flipud(full_image)
+
+
+class TEX09(TEX07):
     header: "TEX09Header"
     item_headers: list["TEX09ItemHeader"]
     item_contents: list["Mipmap"]
@@ -281,6 +310,11 @@ class Mipmap(BaseModel):
         header = cls.Header(level=level, mode=mode, width=width, height=height)
         bitmap = stream.read(header.bitmap_width * header.bitmap_height * header.bitmap_depth)
         return cls(header=header, bitmap=bitmap)
+
+    @property
+    def bitmap_np(self) -> np.ndarray:
+        bitmap_np = np.frombuffer(self.bitmap, dtype={2: np.uint16, 3: np.uint32, 67: np.uint32}[self.header.mode])
+        return bitmap_np.reshape((self.header.height, self.header.width))
 
 
 class TEX06Header(base.StructModel):

@@ -33,7 +33,7 @@ class FileModel(BaseModel):
         raise NotImplementedError
 
 
-class FileIgnored(NotImplementedError):
+class FileIgnored(NotImplementedError):  # noqa: N818
     """Raise when this file is ignored intentionally"""
 
 

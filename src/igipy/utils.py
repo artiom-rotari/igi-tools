@@ -83,7 +83,7 @@ def convert_all(  # noqa: PLR0913
         elif isinstance(dst_dir, Path):
             dst = dst_dir.joinpath(dst_path)
         else:
-            raise ValueError(f"dst_dir must be Path or dict[str, Path], not {type(dst_dir)}")
+            raise TypeError(f"dst_dir must be Path or dict[str, Path], not {type(dst_dir)}")
 
         typer.echo(
             f'Convert [{i:>05}]: "{typer.style(src.as_posix(), fg="green")}" '
