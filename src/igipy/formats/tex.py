@@ -82,6 +82,7 @@ class TEX02(BaseModel):
             height=self.header.height,
             content=self.content.bitmap,
             pixel_format={2: "ARGB1555", 3: "ARGB8888", 67: "ARGB8888"}[self.header.mode],
+            bottom_to_top=True,
         ).model_dump_stream(stream=stream)
 
         return path, stream
@@ -122,6 +123,7 @@ class TEX07(BaseModel):
             height=bitmap.shape[0],
             content=bitmap.tobytes(),
             pixel_format={2: "ARGB1555", 3: "ARGB8888", 67: "ARGB8888"}[self.header.mode],
+            bottom_to_top=True,
         ).model_dump_stream(stream=stream)
 
         return path, stream
@@ -139,7 +141,7 @@ class TEX07(BaseModel):
             row, col = divmod(index, tiles_cols)
             full_image[row * tile_height : (row + 1) * tile_height, col * tile_width : (col + 1) * tile_width] = tile
 
-        return np.flipud(full_image)
+        return full_image
 
 
 class TEX09(TEX07):
@@ -209,6 +211,7 @@ class TEX11(BaseModel):
             height=self.header.height,
             content=self.content[0].bitmap,
             pixel_format={2: "ARGB1555", 3: "ARGB8888", 67: "ARGB8888"}[self.header.mode],
+            bottom_to_top=True,
         ).model_dump_stream(stream=stream)
 
         return path, stream

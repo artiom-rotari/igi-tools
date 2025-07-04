@@ -33,15 +33,15 @@ class TGAHeader(base.StructModel):
     height: NonNegativeInt = Field(le=const.UINT_16.stop - 1)
     pixel_depth: Literal[8, 16, 24, 32]
     image_descriptor_alpha_depth: NonNegativeInt = Field(ge=const.UINT_04.start, le=const.UINT_04.stop - 1, default=0)
-    image_descriptor_left_to_right: NonNegativeInt = Field(ge=0, le=1, default=0)
-    image_descriptor_top_to_bottom: NonNegativeInt = Field(ge=0, le=1, default=0)
+    image_descriptor_right_to_left: NonNegativeInt = Field(ge=0, le=1, default=0)
+    image_descriptor_bottom_to_top: NonNegativeInt = Field(ge=0, le=1, default=0)
 
     @property
     def image_descriptor(self) -> int:
         return (
             (self.image_descriptor_alpha_depth & 0x0F)
-            | (self.image_descriptor_left_to_right << 4)
-            | (self.image_descriptor_top_to_bottom << 5)
+            | (self.image_descriptor_right_to_left << 4)
+            | (self.image_descriptor_bottom_to_top << 5)
         )
 
     def model_dump_stream(self, stream: BytesIO | None = None) -> BytesIO:
@@ -78,18 +78,33 @@ class TGA(BaseModel):
         return stream
 
     @classmethod
-    def from_raw_bytes(cls, width: int, height: int, content: bytes, pixel_format: base.PixelFormat | str) -> Self:
+    def from_raw_bytes(
+        cls,
+        width: int,
+        height: int,
+        content: bytes,
+        pixel_format: base.PixelFormat | str,
+        right_to_left: bool = False,
+        bottom_to_top: bool = False,
+    ) -> Self:
         pixel_format = base.PixelFormat(pixel_format.upper())
 
         if pixel_format == base.PixelFormat.ARGB1555:
-            return cls.from_raw_bytes_argb1555(width, height, content)
+            return cls.from_raw_bytes_argb1555(width, height, content, right_to_left, bottom_to_top)
         if pixel_format == base.PixelFormat.ARGB8888:
-            return cls.from_raw_bytes_argb8888(width, height, content)
+            return cls.from_raw_bytes_argb8888(width, height, content, right_to_left, bottom_to_top)
 
         raise ValueError(f"Unsupported pixel format: {pixel_format}")
 
     @classmethod
-    def from_raw_bytes_argb1555(cls, width: int, height: int, content: bytes) -> Self:
+    def from_raw_bytes_argb1555(
+        cls,
+        width: int,
+        height: int,
+        content: bytes,
+        right_to_left: bool = False,
+        bottom_to_top: bool = False,
+    ) -> Self:
         if width not in const.UINT_16:
             raise ValueError(f"Width must be in {const.UINT_16}")
 
@@ -112,14 +127,21 @@ class TGA(BaseModel):
             height=height,
             pixel_depth=16,
             image_descriptor_alpha_depth=1,
-            image_descriptor_left_to_right=1,
-            image_descriptor_top_to_bottom=1,
+            image_descriptor_right_to_left=int(right_to_left),
+            image_descriptor_bottom_to_top=int(bottom_to_top),
         )
 
         return cls(header=header, content=content)
 
     @classmethod
-    def from_raw_bytes_argb8888(cls, width: int, height: int, content: bytes) -> Self:
+    def from_raw_bytes_argb8888(
+        cls,
+        width: int,
+        height: int,
+        content: bytes,
+        right_to_left: bool = False,
+        bottom_to_top: bool = False,
+    ) -> Self:
         if width not in const.UINT_16:
             raise ValueError(f"Width must be in {const.UINT_16}")
 
@@ -142,8 +164,8 @@ class TGA(BaseModel):
             height=height,
             pixel_depth=32,
             image_descriptor_alpha_depth=8,
-            image_descriptor_left_to_right=0,
-            image_descriptor_top_to_bottom=0,
+            image_descriptor_right_to_left=int(right_to_left),
+            image_descriptor_bottom_to_top=int(bottom_to_top),
         )
 
         return cls(header=header, content=content)
