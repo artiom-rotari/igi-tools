@@ -164,14 +164,14 @@ class TEX02Header(base.StructModel):
 
     signature: Literal[b"LOOP"]
     version: Literal[2]
-    unknown_01: NonNegativeInt
-    unknown_02: NonNegativeInt
-    unknown_03: NonNegativeInt
-    unknown_04: NonNegativeInt
-    unknown_05: NonNegativeInt
-    width: NonNegativeInt
-    height: NonNegativeInt
-    mode: NonNegativeInt
+    unknown_01: Literal[0]
+    unknown_02: Literal[0]
+    unknown_03: Literal[0]
+    unknown_04: Literal[0]
+    unknown_05: NonNegativeInt  # always 128
+    width: NonNegativeInt  # always 64
+    height: NonNegativeInt  # always 64
+    mode: Literal[2, 3, 67]  # always 2
 
 
 class TEX07Header(base.StructModel):
@@ -179,21 +179,26 @@ class TEX07Header(base.StructModel):
 
     signature: Literal[b"LOOP"]
     version: Literal[7]
-    unknown_01: NonNegativeInt
-    unknown_02: NonNegativeInt
-    unknown_03: NonNegativeInt
-    unknown_04: NonNegativeInt
-    unknown_05: NonNegativeInt
+    unknown_01: Literal[2880154539]
+    unknown_02: Literal[2880154539]
+    unknown_03: Literal[0]
+    unknown_04: Literal[0]
+    unknown_05: Literal[0]
     offset: NonNegativeInt
     count: NonNegativeInt
-    unknown_06: NonNegativeInt
+    unknown_06: Literal[2880154539]
     width: NonNegativeInt
     height: NonNegativeInt
-    mode: NonNegativeInt
+    mode: Literal[2, 3, 67]  # always 3
 
 
 class TEX09Header(TEX07Header):
     version: Literal[9]
+    unknown_01: Literal[0]
+    unknown_02: Literal[0]
+    unknown_03: Literal[327680]
+    unknown_06: Literal[0]
+    mode: Literal[2, 3, 67]  # always 2 or 3
 
 
 class TEX11Header(base.StructModel):
@@ -201,15 +206,15 @@ class TEX11Header(base.StructModel):
 
     signature: Literal[b"LOOP"]
     version: Literal[11]
-    mode: NonNegativeInt
-    unknown_01: NonNegativeInt
-    unknown_02: NonNegativeInt
-    unknown_03: NonNegativeInt
+    mode: Literal[2, 3, 67]
+    unknown_01: Literal[0]
+    unknown_02: Literal[0]
+    unknown_03: Literal[5, 6, 7, 8]
     width: NonNegativeInt
     height: NonNegativeInt
-    unknown_04: NonNegativeInt
-    unknown_05: NonNegativeInt
-    unknown_06: NonNegativeInt
+    width_02: NonNegativeInt
+    height_02: NonNegativeInt
+    pixel_depth: Literal[2, 4]
 
 
 class Mipmap(BaseModel):

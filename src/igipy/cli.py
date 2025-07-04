@@ -1,3 +1,4 @@
+import string
 from collections import defaultdict
 from itertools import chain
 from pathlib import Path
@@ -388,3 +389,19 @@ def game_dir_formats() -> None:
         formats_counter[format_name] += 1
 
     print_formats(formats_counter)
+
+
+@dev_app.command(short_help="Search words in binary files")
+def words(src: Path, min_length: int = 5, charset: str = string.printable) -> None:
+    data = src.read_bytes()
+    word = bytearray()
+
+    charset = charset.encode()
+
+    for byte in data:
+        if byte in charset:
+            word.append(byte)
+        else:
+            if len(word) >= min_length:
+                print(word.decode())
+            word.clear()
