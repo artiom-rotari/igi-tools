@@ -1,131 +1,128 @@
 # IGI Tools
 
-**igipy** is a CLI application built on top of python for converting game files from `Project I.G.I: I'm going in` (or simple - IGI 1) formats into standard (common used) formats.
+**igipy** is a Python CLI tool for converting game files from *Project I.G.I: I'm Going In* (IGI 1) into standard, widely supported formats. It is a direct successor and refactor of the tool published at [https://github.com/NEWME0/Project-IGI/](https://github.com/NEWME0/Project-IGI/).
 
 ## Features
 
-- Convert `.res` files to `.zip` or `.json` (depending on is archive or translation file)
-- Convert `.qvm` files to `.qsc`
-- Convert `.wav` into regular Waveform `.wav`. Decode `ADPCM` encoded files.
-- Convert `.tex`, `.spr` and `.pic` into `.tga`
+* Convert `.res` files to `.zip` or `.json` (depending on whether it's an archive or translation file)
+* Convert `.qvm` files to `.qsc`
+* Convert `.wav` files to standard Waveform `.wav` including ADPCM-encoded sound files.
+* Convert `.tex`, `.spr`, and `.pic` files to `.tga`
 
 ## Installation
 
-This package requires `python 3.13`.
+Requires **Python 3.13**.
 
-To install the package itself, run:
+To install:
 
-```
+```bash
 python -m pip install --upgrade igipy
 ```
 
 ## Quickstart
 
-Create somewhere on your PC a folder where you want to extract game files. Open PowerShell and run:
+1. Create a folder where you want to extract or convert game files.
 
-```
-python -m igipy --version
-```
+2. Open PowerShell (or terminal) and verify the installation:
 
-You should see `Version: 0.2.0` (or higher). That means that the package is installed correctly.
+   ```bash
+   python -m igipy --version
+   ```
 
-To see all available modules, run:
+   You should see output like `Version: 0.2.0` or higher.
 
-```
-python -m igipy --help
-```
+3. To see available modules:
 
-To execute one or another conversion command, this package requires a minimal configuration. Run:
+   ```bash
+   python -m igipy --help
+   ```
 
-```
-python -m igipy --config
-```
+4. Generate the configuration file:
 
-This command will create in the current directory a file - `igipy.json`. Open this file with your favorite text editor and update value of `"game_dir"` to a path where IGI 1 is installed. For example:
+   ```bash
+   python -m igipy --config
+   ```
 
-```
-{
-  "game_dir": "C:/Users/artiom.rotari/Desktop/ProjectIGI",
-  "archive_dir": "./archive",
-  "convert_dir": "./convert"
-}
-```
+   This will create `igipy.json` in the current directory. Open it and set the `"game_dir"` to your IGI 1 installation path, for example:
 
-Other settings you can leave as is for now.
+   ```json
+   {
+     "game_dir": "C:/Users/artiom.rotari/Desktop/ProjectIGI",
+     "archive_dir": "./archive",
+     "convert_dir": "./convert"
+   }
+   ```
 
-To check the configuration, execute:
+5. Verify configuration:
 
-```
-python -m igipy --config
-```
+   ```bash
+   python -m igipy --config
+   ```
 
-If everything is good, you must see no warning bellow settings dump.
+   If everything is configured correctly, you should see no warnings below the settings output.
 
+## User Guide
 
-## User guide
+### Extract `.res` Archives
 
-### Extract `.res` archives
-
-```
+```bash
 python -m igipy res convert-all
 ```
 
-This command will iterate all `.res` files in game directory and will:
-- convert into `.zip` in `archive_dir` if it is a container of files
-- convert into `.json` in `convert_dir` if it is a container of a text
+* Converts archive `.res` files to `.zip` (in `archive_dir`)
+* Converts text `.res` files to `.json` (in `convert_dir`)
 
-### Convert `.wav` files
+### Convert `.wav` Files
 
-```
+```bash
 python -m igipy wav convert-all
 ```
 
-This command will iterate all `.wav` files in `game_dir` and `archive_dir` zips and will convert them into regular `.wav` in `convert_dir`.
+Converts all `.wav` files (from `game_dir` and `.zip` archives) to standard `.wav` in `convert_dir`.
 
-### Convert `.qvm` files
+### Convert `.qvm` Files
 
-```
+```bash
 python -m igipy qvm convert-all
 ```
 
-This command will iterate all `.qvm` files in `game_dir` and will convert them into `.qsc` in the `convert_dir`.
+Converts `.qvm` files in `game_dir` to `.qsc` format in `convert_dir`.
 
-### Convert `.tex`, `.spc` or `.pic` files
+### Convert `.tex`, `.spr`, and `.pic` Files
 
-```
+```bash
 python -m igipy tex convert-all
 ```
 
-This command will iterate all `.tex`, `.spc` or `.pic` files in `game_dir` and `archive_dir` zips and will convert them into `.tga` in `convert_dir`.
+Converts `.tex`, `.spr`, and `.pic` files (from `game_dir` and archives) to `.tga` in `convert_dir`.
 
+## Supported Game File Formats
 
-## Game file formats
+Below is a summary of the file formats in *Project I.G.I*, including their locations and conversion support:
 
-Game directory of "Project I.G.I: I'm going in" contains the following extensions:
-
-| Extension      | In game directory | In .res files | Can convert |
-|----------------|-------------------|---------------|-------------|
-| `.olm`         | -                 | 25337         | -           |
-| `.tex`         | 26                | 7199          | Yes         |
-| `.mef`         | -                 | 6794          | -           |
-| `.qvm`         | 997               | -             | Yes         |
-| `.wav`         | 394               | 346           | Yes         |
-| `.dat` (graph) | 300               | -             | -           |
-| `.spr`         | -                 | 158           | Yes         |
-| `.res`         | 92                | -             | Yes         |
-| `.dat` (mtp)   | 17                | -             | -           |
-| `.mtp`         | 17                | -             | -           |
-| `.bit`         | 14                | -             | -           |
-| `.cmd`         | 14                | -             | -           |
-| `.ctr`         | 14                | -             | -           |
-| `.lmp`         | 14                | -             | -           |
-| `.fnt`         | 2                 | 9             | -           |
-| `.hmp`         | 6                 | -             | -           |
-| `.rtf`         | 6                 | -             | Is regular  |
-| `.txt`         | 6                 | -             | Is regular  |
-| `.iff`         | 6                 | -             | -           |
-| `.pic`         | -                 | 5             | Yes         |
-| `.url`         | 5                 | -             | Is regular  |
-| `.avi`         | 5                 | -             | Is regular  |
-| `.AFP`         | 3                 | -             | Is regular  |
-| `.exe`         | 2                 | -             | Is regular  |
+| Extension      | In Game Dir | In `.res` | Convertible     |
+|----------------|-------------|-----------|-----------------|
+| `.olm`         | -           | 25,337    | ❌ No            |
+| `.tex`         | 26          | 7,199     | ✅ Yes           |
+| `.mef`         | -           | 6,794     | ❌ No            |
+| `.qvm`         | 997         | -         | ✅ Yes           |
+| `.wav`         | 394         | 346       | ✅ Yes           |
+| `.dat` (graph) | 300         | -         | ❌ No            |
+| `.spr`         | -           | 158       | ✅ Yes           |
+| `.res`         | 92          | -         | ✅ Yes           |
+| `.dat` (mtp)   | 17          | -         | ❌ No            |
+| `.mtp`         | 17          | -         | ❌ No            |
+| `.bit`         | 14          | -         | ❌ No            |
+| `.cmd`         | 14          | -         | ❌ No            |
+| `.ctr`         | 14          | -         | ❌ No            |
+| `.lmp`         | 14          | -         | ❌ No            |
+| `.fnt`         | 2           | 9         | ❌ No            |
+| `.hmp`         | 6           | -         | ❌ No            |
+| `.rtf`         | 6           | -         | ⚠️ Regular file |
+| `.txt`         | 6           | -         | ⚠️ Regular file |
+| `.iff`         | 6           | -         | ❌ No            |
+| `.pic`         | -           | 5         | ✅ Yes           |
+| `.url`         | 5           | -         | ⚠️ Regular file |
+| `.avi`         | 5           | -         | ⚠️ Regular file |
+| `.AFP`         | 3           | -         | ⚠️ Regular file |
+| `.exe`         | 2           | -         | ⚠️ Regular file |
