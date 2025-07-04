@@ -33,7 +33,7 @@ class Config(BaseSettings):
         with cls.path.open() as fp:
             return cls.model_validate_json(fp.read())
 
-    def is_valid(self, exit_on_error: bool = True) -> bool:  # noqa: C901, FBT001, FBT002
+    def is_valid(self, exit_on_error: bool = True) -> bool:  # noqa: C901
         valid = True
 
         if not self.game_dir:
@@ -135,8 +135,8 @@ class Config(BaseSettings):
 @app.callback(invoke_without_command=True)
 def callback(
     ctx: typer.Context,
-    version: bool = typer.Option(None, "--version", is_eager=True, help="Show version."),  # noqa: FBT001
-    config: bool = typer.Option(None, "--config", is_eager=True, help="Show config."),  # noqa: FBT001
+    version: bool = typer.Option(None, "--version", is_eager=True, help="Show version."),
+    config: bool = typer.Option(None, "--config", is_eager=True, help="Show config."),
 ) -> None:
     if version:
         typer.echo(f"Version: {typer.style(__version__, fg='green')}")
@@ -196,7 +196,7 @@ def res_callback(ctx: typer.Context) -> None:
     name="convert-all",
     short_help="Convert all .res files found in game_dir to .zip or .json files",
 )
-def res_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
+def res_convert_all(dry: bool = False) -> None:
     settings = Config.load()
     settings.is_valid(exit_on_error=True)
 
@@ -224,7 +224,7 @@ def wav_callback(ctx: typer.Context) -> None:
     name="convert-all",
     short_help="Convert all .wav files found in game_dir and archive_dir to regular .wav files",
 )
-def wav_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
+def wav_convert_all(dry: bool = False) -> None:
     settings = Config.load()
     settings.is_valid(exit_on_error=True)
 
@@ -253,7 +253,7 @@ def qvm_callback(ctx: typer.Context) -> None:
     name="convert-all",
     short_help="Convert all .qvm files found in game_dir to .qsc file",
 )
-def qvm_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
+def qvm_convert_all(dry: bool = False) -> None:
     settings = Config.load()
     settings.is_valid(exit_on_error=True)
 
@@ -286,7 +286,7 @@ def tex_callback(ctx: typer.Context) -> None:
     name="convert-all",
     short_help="Convert all .tex, .spr and .pic files found in game_dir and archive_dir to .tga files",
 )
-def tex_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
+def tex_convert_all(dry: bool = False) -> None:
     settings = Config.load()
     settings.is_valid(exit_on_error=True)
 
@@ -335,7 +335,7 @@ def print_zip_formats(counter: defaultdict) -> None:
     )
 
 
-def dir_glob(directory: Path, pattern: str, absolute: bool = False) -> None:  # noqa: FBT001, FBT002
+def dir_glob(directory: Path, pattern: str, absolute: bool = False) -> None:
     for number, path in enumerate(directory.glob(pattern), start=1):
         if path.is_file():
             print(f"[{number:>04}] {(path.absolute() if absolute else path.relative_to(directory)).as_posix()}")
@@ -349,7 +349,7 @@ def dev_callback(ctx: typer.Context) -> None:
 
 
 @dev_app.command(short_help="List files in game directory by pattern")
-def game_dir_glob(pattern: str = "**/*", absolute: bool = False) -> None:  # noqa: FBT001, FBT002
+def game_dir_glob(pattern: str = "**/*", absolute: bool = False) -> None:
     settings = Config.load()
     settings.is_valid(exit_on_error=True)
 

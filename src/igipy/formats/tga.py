@@ -78,7 +78,7 @@ class TGA(BaseModel):
         return stream
 
     @classmethod
-    def from_raw_bytes(
+    def from_raw_bytes(  # noqa: PLR0913
         cls,
         width: int,
         height: int,

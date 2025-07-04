@@ -7,11 +7,11 @@
 - Convert `.res` files to `.zip` or `.json` (depending on is archive or translation file)
 - Convert `.qvm` files to `.qsc`
 - Convert `.wav` into regular Waveform `.wav`. Decode `ADPCM` encoded files.
-
+- Convert `.tex`, `.spr` and `.pic` into `.tga`
 
 ## Installation
 
-This package requires `python 3.13` (at least it is developed and tested on this python version).
+This package requires `python 3.13`.
 
 To install the package itself, run:
 
@@ -27,7 +27,7 @@ Create somewhere on your PC a folder where you want to extract game files. Open 
 python -m igipy --version
 ```
 
-You should see `Version: 0.1.4` (or higher). That means that the package is installed correctly.
+You should see `Version: 0.2.0` (or higher). That means that the package is installed correctly.
 
 To see all available modules, run:
 
@@ -90,34 +90,42 @@ python -m igipy qvm convert-all
 
 This command will iterate all `.qvm` files in `game_dir` and will convert them into `.qsc` in the `convert_dir`.
 
+### Convert `.tex`, `.spc` or `.pic` files
 
-## File formats research
+```
+python -m igipy tex convert-all
+```
 
-Game directory of "Project I.G.I: I'm going in" contains:
+This command will iterate all `.tex`, `.spc` or `.pic` files in `game_dir` and `archive_dir` zips and will convert them into `.tga` in `convert_dir`.
 
-| Suffix         | Game directory | Inside `.res` files |
-|----------------|----------------|---------------------|
-| `.olm`         | -              | 25337               |
-| `.tex`         | 26             | 7199                |
-| `.mef`         | -              | 6794                |
-| `.qvm`         | 997            | -                   |
-| `.wav`         | 394            | 346                 |
-| `.dat` (graph) | 300            | -                   |
-| `.spr`         | -              | 158                 |
-| `.res`         | 92             | -                   |
-| `.dat` (mtp)   | 17             | -                   |
-| `.mtp`         | 17             | -                   |
-| `.bit`         | 14             | -                   |
-| `.cmd`         | 14             | -                   |
-| `.ctr`         | 14             | -                   |
-| `.lmp`         | 14             | -                   |
-| `.fnt`         | 2              | 9                   |
-| `.hmp`         | 6              | -                   |
-| `.rtf`         | 6              | -                   |
-| `.txt`         | 6              | -                   |
-| `.iff`         | 6              | -                   |
-| `.pic`         | -              | 5                   |
-| `.url`         | 5              | -                   |
-| `.avi`         | 5              | -                   |
-| `.AFP`         | 3              | -                   |
-| `.exe`         | 2              | -                   |
+
+## Game file formats
+
+Game directory of "Project I.G.I: I'm going in" contains the following extensions:
+
+| Extension      | In game directory | In .res files | Can convert |
+|----------------|-------------------|---------------|-------------|
+| `.olm`         | -                 | 25337         | -           |
+| `.tex`         | 26                | 7199          | Yes         |
+| `.mef`         | -                 | 6794          | -           |
+| `.qvm`         | 997               | -             | Yes         |
+| `.wav`         | 394               | 346           | Yes         |
+| `.dat` (graph) | 300               | -             | -           |
+| `.spr`         | -                 | 158           | Yes         |
+| `.res`         | 92                | -             | Yes         |
+| `.dat` (mtp)   | 17                | -             | -           |
+| `.mtp`         | 17                | -             | -           |
+| `.bit`         | 14                | -             | -           |
+| `.cmd`         | 14                | -             | -           |
+| `.ctr`         | 14                | -             | -           |
+| `.lmp`         | 14                | -             | -           |
+| `.fnt`         | 2                 | 9             | -           |
+| `.hmp`         | 6                 | -             | -           |
+| `.rtf`         | 6                 | -             | Is regular  |
+| `.txt`         | 6                 | -             | Is regular  |
+| `.iff`         | 6                 | -             | -           |
+| `.pic`         | -                 | 5             | Yes         |
+| `.url`         | 5                 | -             | Is regular  |
+| `.avi`         | 5                 | -             | Is regular  |
+| `.AFP`         | 3                 | -             | Is regular  |
+| `.exe`         | 2                 | -             | Is regular  |

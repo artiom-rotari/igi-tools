@@ -67,7 +67,7 @@ def convert_all(  # noqa: PLR0913
     dst_dir: Path | dict[str, Path],
     src_dir: Path | None = None,
     zip_dir: Path | None = None,
-    dry: bool = True,  # noqa: FBT001, FBT002
+    dry: bool = True,
 ) -> None:
     searcher = search_for_convert(patterns=patterns, src_dir=src_dir, zip_dir=zip_dir)
 
