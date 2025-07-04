@@ -206,7 +206,7 @@ def res_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
         patterns=["**/*.res"],
         formater=formats.RES,
         src_dir=settings.game_dir,
-        dst_dir=settings.archive_dir,
+        dst_dir={".zip": settings.archive_dir, ".json": settings.convert_dir},
         dry=dry,
     )
 

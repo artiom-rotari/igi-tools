@@ -64,7 +64,7 @@ def search_for_convert(
 def convert_all(  # noqa: PLR0913
     patterns: list[str],
     formater: type[formats.FileModel],
-    dst_dir: Path,
+    dst_dir: Path | dict[str, Path],
     src_dir: Path | None = None,
     zip_dir: Path | None = None,
     dry: bool = True,  # noqa: FBT001, FBT002
@@ -72,8 +72,14 @@ def convert_all(  # noqa: PLR0913
     searcher = search_for_convert(patterns=patterns, src_dir=src_dir, zip_dir=zip_dir)
 
     for i, (src, src_path, src_stream) in enumerate(searcher, start=1):
-        dst = dst_dir.joinpath(src_path)
-        dst, dst_stream = formater.model_validate_stream(src_stream).model_dump_file(dst)
+        dst_path, dst_stream = formater.model_validate_stream(src_stream).model_dump_file(src_path)
+
+        if isinstance(dst_dir, dict):
+            dst = dst_dir[dst_path.suffix].joinpath(dst_path)
+        elif isinstance(dst_dir, Path):
+            dst = dst_dir.joinpath(dst_path)
+        else:
+            raise ValueError(f"dst_dir must be Path or dict[str, Path], not {type(dst_dir)}")
 
         typer.echo(
             f'Convert [{i:>05}]: "{typer.style(src.as_posix(), fg="green")}" '
