@@ -1,3 +1,4 @@
+from enum import Enum
 from io import BytesIO
 from pathlib import Path
 from struct import Struct
@@ -21,6 +22,20 @@ class FileModel(BaseModel):
     def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
         raise NotImplementedError
 
+    def model_dump_file(self, path: Path | None = None, stream: BytesIO | None = None) -> tuple[Path, BytesIO]:
+        path = path or (Path(self.meta_path.name) if self.meta_path else Path("undefined"))
+        stream = stream or BytesIO()
+        path, stream = self.model_dump_stream(path, stream)
+        stream.seek(0)
+        return path, stream
+
+    def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
+        raise NotImplementedError
+
+
+class FileIgnored(NotImplementedError):  # noqa: N818
+    """Raise when this file is ignored intentionally"""
+
 
 class StructModel(BaseModel):
     _struct: ClassVar[Struct] = None
@@ -31,3 +46,8 @@ class StructModel(BaseModel):
         cls_values = cls._struct.unpack(stream.read(cls._struct.size))
         # noinspection PyArgumentList
         return cls(**dict(zip(cls_fields, cls_values, strict=True)))
+
+
+class PixelFormat(str, Enum):
+    ARGB1555 = "ARGB1555"
+    ARGB8888 = "ARGB8888"

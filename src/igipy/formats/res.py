@@ -1,11 +1,13 @@
+import json
 from io import BytesIO
+from pathlib import Path
 from struct import Struct
 from typing import ClassVar, Literal, Self
 from zipfile import ZipFile
 
 from pydantic import BaseModel, Field, NonNegativeInt
 
-from igipy.models import FileModel, StructModel
+from . import base
 
 
 def align(stream: BytesIO, padding: int) -> None:
@@ -17,7 +19,7 @@ def align(stream: BytesIO, padding: int) -> None:
         raise ValueError(message)
 
 
-class ChunkHeader(StructModel):
+class ChunkHeader(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4s3I")
 
     signature: bytes = Field(min_length=4, max_length=4)
@@ -72,7 +74,7 @@ class RESChunkNAME(Chunk):
     header: RESChunkNAMEHeader
 
     def get_cleaned_content(self) -> str:
-        return self.content.decode().removesuffix("\x00")
+        return self.content.removesuffix(b"\x00").decode("latin1")
 
 
 class RESChunkBODYHeader(ChunkHeader):
@@ -86,11 +88,11 @@ class RESChunkBODY(Chunk):
         if self.header.signature == b"BODY":
             return self.content
         if self.header.signature in {b"PATH", b"CSTR"}:
-            return self.content.decode().removesuffix("\x00")
+            return self.content.removesuffix(b"\x00").decode("latin1")
         raise ValueError(f"Unsupported chunk signature: {self.header.signature}")
 
 
-class RESHeader(StructModel):
+class RESHeader(base.StructModel):
     _struct: ClassVar[Struct] = Struct("4s3I4s")
 
     signature: Literal[b"ILFF"]
@@ -126,7 +128,7 @@ class RESFile(ChunkPair):
         return self.chunk_b.get_cleaned_content()
 
 
-class RES(FileModel):
+class RES(base.FileModel):
     header: RESHeader
     content: list[RESFile]
 
@@ -148,23 +150,30 @@ class RES(FileModel):
 
         return cls(meta_path=path, meta_size=size, header=header, content=content)
 
-    def is_file_container(self) -> bool:
-        return all(res_file.chunk_b.header.signature in {b"BODY", b"PATH"} for res_file in self.content)
+    def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
+        if all(res_file.chunk_b.header.signature in {b"BODY", b"PATH"} for res_file in self.content):
+            path = path.with_suffix(".zip")
 
-    def is_text_container(self) -> bool:
-        return all(res_file.chunk_b.header.signature == b"CSTR" for res_file in self.content)
+            with ZipFile(stream, "w") as zip_stream:
+                for res_file in self.content:
+                    if res_file.is_file():
+                        zip_stream.writestr(res_file.file_name, res_file.file_content)
 
-    def to_zip(self, stream: BytesIO | None = None) -> BytesIO:
-        if not self.is_file_container():
-            raise ValueError("Current is not a file container")
+        elif all(res_file.chunk_b.header.signature in {b"CSTR", b"PATH"} for res_file in self.content):
+            path = path.with_suffix(".json")
 
-        stream = stream or BytesIO()
+            content = [
+                {
+                    "key": res_file.chunk_a.get_cleaned_content(),
+                    "value": res_file.chunk_b.get_cleaned_content(),
+                }
+                for res_file in self.content
+                if res_file.is_text()
+            ]
 
-        with ZipFile(stream, "w") as zip_stream:
-            for res_file in self.content:
-                if res_file.is_file():
-                    zip_stream.writestr(res_file.file_name, res_file.file_content)
+            stream.write(json.dumps(content, indent=4).encode())
 
-        stream.seek(0)
+        else:
+            raise ValueError("Current is neither a file container nor a text container")
 
-        return stream
+        return path, stream
