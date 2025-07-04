@@ -33,6 +33,10 @@ class FileModel(BaseModel):
         raise NotImplementedError
 
 
+class FileIgnored(NotImplementedError):
+    """Raise when this file is ignored intentionally"""
+
+
 class StructModel(BaseModel):
     _struct: ClassVar[Struct] = None
 

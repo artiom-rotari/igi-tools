@@ -72,7 +72,11 @@ def convert_all(  # noqa: PLR0913
     searcher = search_for_convert(patterns=patterns, src_dir=src_dir, zip_dir=zip_dir)
 
     for i, (src, src_path, src_stream) in enumerate(searcher, start=1):
-        dst_path, dst_stream = formater.model_validate_stream(src_stream).model_dump_file(src_path)
+        try:
+            dst_path, dst_stream = formater.model_validate_stream(src_stream).model_dump_file(src_path)
+        except formats.base.FileIgnored:
+            typer.echo(f"Convert [{i:>05}]: {typer.style(src.as_posix(), fg='yellow')} ignored")
+            continue
 
         if isinstance(dst_dir, dict):
             dst = dst_dir[dst_path.suffix].joinpath(dst_path)

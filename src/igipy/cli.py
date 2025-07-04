@@ -1,10 +1,8 @@
 import string
 from collections import defaultdict
-from itertools import chain
 from pathlib import Path
 from typing import Annotated, ClassVar, Self
 
-import polars as pl
 import typer
 from pydantic import Field, PlainSerializer
 from pydantic_settings import BaseSettings
@@ -285,31 +283,21 @@ def tex_callback(ctx: typer.Context) -> None:
 
 
 @tex_app.command(
-    name="dev",
-    short_help="List .tex",
+    name="convert-all",
+    short_help="Convert all .tex, .spr and .pic files found in game_dir and archive_dir to .tga files",
 )
-def tex_dev() -> pl.DataFrame | None:
+def tex_convert_all(dry: bool = False) -> None:  # noqa: FBT001, FBT002
     settings = Config.load()
     settings.is_valid(exit_on_error=True)
 
-    content = defaultdict(list)
-
-    for directory in [settings.game_dir, settings.archive_dir]:
-        for src in chain(
-            directory.glob("**/*.tex"),
-            directory.glob("**/*.spr"),
-            directory.glob("**/*.pic"),
-        ):
-            print(src)
-            tex = formats.TEX.model_validate_file(src)
-
-            for mipmap in tex.mipmaps:
-                content["level"].append(mipmap.header.level)
-                content["mode"].append(mipmap.header.mode)
-                content["width"].append(mipmap.header.bitmap_width)
-                content["height"].append(mipmap.header.bitmap_height)
-
-    return pl.DataFrame(content)
+    utils.convert_all(
+        patterns=["**/*.tex", "**/*.spr", "**/*.pic"],
+        formater=formats.TEX,
+        src_dir=Config.load().game_dir,
+        zip_dir=Config.load().archive_dir,
+        dst_dir=Config.load().convert_dir,
+        dry=dry,
+    )
 
 
 # ------------------------------------------------------

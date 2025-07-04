@@ -5,7 +5,8 @@ from typing import ClassVar, Literal, Self, Union
 
 from pydantic import BaseModel, NonNegativeInt
 
-from igipy.formats import base
+from . import base
+from .tga import TGA
 
 TEX_VERSION_02 = 2
 TEX_VERSION_07 = 7
@@ -35,6 +36,18 @@ class TEX(base.FileModel):
 
         return cls(meta_path=path, meta_size=size, variant=variant)
 
+    def model_dump_stream(self, path: base.Path, stream: BytesIO) -> tuple[base.Path, BytesIO]:
+        if isinstance(self.variant, TEX02):
+            return self.variant.model_dump_stream(path, stream)
+
+        if isinstance(self.variant, (TEX07, TEX09)):
+            raise base.FileIgnored("Not implemented yet")
+
+        if isinstance(self.variant, TEX11):
+            return self.variant.model_dump_stream(path, stream)
+
+        raise ValueError(f"Unsupported variant: {self.variant}")
+
     @property
     def mipmaps(self) -> list["Mipmap"]:
         if isinstance(self.variant, TEX02):
@@ -59,6 +72,18 @@ class TEX02(BaseModel):
             raise ValueError("Parsing incomplete. Expected to reach EOF.")
 
         return cls(header=header, content=content)
+
+    def model_dump_stream(self, path: base.Path, stream: BytesIO) -> tuple[base.Path, BytesIO]:
+        path = path.with_suffix(".tga")
+
+        TGA.from_raw_bytes(
+            width=self.header.width,
+            height=self.header.height,
+            content=self.content.bitmap,
+            pixel_format={2: "ARGB1555", 3: "ARGB8888", 67: "ARGB8888"}[self.header.mode],
+        ).model_dump_stream(stream=stream)
+
+        return path, stream
 
 
 class TEX07(BaseModel):
@@ -146,6 +171,18 @@ class TEX11(BaseModel):
             raise ValueError("Parsing incomplete. Expected to reach EOF.")
 
         return cls(header=header, content=content)
+
+    def model_dump_stream(self, path: base.Path, stream: BytesIO) -> tuple[base.Path, BytesIO]:
+        path = path.with_suffix(".tga")
+
+        TGA.from_raw_bytes(
+            width=self.header.width,
+            height=self.header.height,
+            content=self.content[0].bitmap,
+            pixel_format={2: "ARGB1555", 3: "ARGB8888", 67: "ARGB8888"}[self.header.mode],
+        ).model_dump_stream(stream=stream)
+
+        return path, stream
 
 
 class TEX06(BaseModel):

@@ -90,10 +90,10 @@ class TGA(BaseModel):
 
     @classmethod
     def from_raw_bytes_argb1555(cls, width: int, height: int, content: bytes) -> Self:
-        if width in const.UINT_16:
+        if width not in const.UINT_16:
             raise ValueError(f"Width must be in {const.UINT_16}")
 
-        if height in const.UINT_16:
+        if height not in const.UINT_16:
             raise ValueError(f"Height must be in {const.UINT_16}")
 
         if len(content) != width * height * 2:
@@ -112,18 +112,18 @@ class TGA(BaseModel):
             height=height,
             pixel_depth=16,
             image_descriptor_alpha_depth=1,
-            image_descriptor_left_to_right=0,
-            image_descriptor_top_to_bottom=0,
+            image_descriptor_left_to_right=1,
+            image_descriptor_top_to_bottom=1,
         )
 
         return cls(header=header, content=content)
 
     @classmethod
     def from_raw_bytes_argb8888(cls, width: int, height: int, content: bytes) -> Self:
-        if width in const.UINT_16:
+        if width not in const.UINT_16:
             raise ValueError(f"Width must be in {const.UINT_16}")
 
-        if height in const.UINT_16:
+        if height not in const.UINT_16:
             raise ValueError(f"Height must be in {const.UINT_16}")
 
         if len(content) != width * height * 4:
