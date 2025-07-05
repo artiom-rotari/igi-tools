@@ -102,29 +102,29 @@ Converts `.tex`, `.spr`, and `.pic` files (from `source_dir` and archives) to `.
 
 Below is a summary of the file formats in *Project I.G.I*, including their locations and conversion support:
 
-| Extension      | In Game Dir | In `.res` | Convertible     |
-|----------------|-------------|-----------|-----------------|
-| `.olm`         | -           | 25,337    | ❌ No            |
-| `.tex`         | 26          | 7,199     | ✅ Yes           |
-| `.mef`         | -           | 6,794     | ❌ No            |
-| `.qvm`         | 997         | -         | ✅ Yes           |
-| `.wav`         | 394         | 346       | ✅ Yes           |
-| `.dat` (graph) | 300         | -         | ❌ No            |
-| `.spr`         | -           | 158       | ✅ Yes           |
-| `.res`         | 92          | -         | ✅ Yes           |
-| `.dat` (mtp)   | 17          | -         | ❌ No            |
-| `.mtp`         | 17          | -         | ❌ No            |
-| `.bit`         | 14          | -         | ❌ No            |
-| `.cmd`         | 14          | -         | ❌ No            |
-| `.ctr`         | 14          | -         | ❌ No            |
-| `.lmp`         | 14          | -         | ❌ No            |
-| `.fnt`         | 2           | 9         | ❌ No            |
-| `.hmp`         | 6           | -         | ❌ No            |
-| `.rtf`         | 6           | -         | ⚠️ Regular file |
-| `.txt`         | 6           | -         | ⚠️ Regular file |
-| `.iff`         | 6           | -         | ❌ No            |
-| `.pic`         | -           | 5         | ✅ Yes           |
-| `.url`         | 5           | -         | ⚠️ Regular file |
-| `.avi`         | 5           | -         | ⚠️ Regular file |
-| `.AFP`         | 3           | -         | ⚠️ Regular file |
-| `.exe`         | 2           | -         | ⚠️ Regular file |
+| Extension       | Total           | Source          | Unpack          | Support         |
+|-----------------|-----------------|-----------------|-----------------|-----------------|
+| `.olm`          | 25337           | 0               | 25337           | 📆 Not now      |
+| `.tex`          | 7225            | 26              | 7199            | ✅ Yes           |
+| `.mef`          | 6794            | 0               | 6794            | 📆 Not now      |
+| `.qvm`          | 997             | 997             | 0               | ✅ Yes           |
+| `.wav`          | 740             | 394             | 346             | ✅ Yes           |
+| `.dat` (graph)  | 300             | 300             | 0               | 📆 Not now      |
+| `.spr`          | 158             | 0               | 158             | ✅ Yes           |
+| `.res`          | 92              | 92              | 0               | ✅ Yes           |
+| `.dat` (mtp)    | 17              | 17              | 0               | 📆 Not now      |
+| `.mtp`          | 17              | 17              | 0               | 📆 Not now      |
+| `.bit`          | 14              | 14              | 0               | 📆 Not now      |
+| `.cmd`          | 14              | 14              | 0               | 📆 Not now      |
+| `.ctr`          | 14              | 14              | 0               | 📆 Not now      |
+| `.lmp`          | 14              | 14              | 0               | 📆 Not now      |
+| `.fnt`          | 11              | 2               | 9               | 📆 Not now      |
+| `.hmp`          | 6               | 6               | 0               | 📆 Not now      |
+| `.rtf`          | 6               | 6               | 0               | ❌ Not           |
+| `.txt`          | 6               | 6               | 0               | ❌ Not           |
+| `.iff`          | 6               | 6               | 0               | 📆 Not now      |
+| `.url`          | 5               | 5               | 0               | ❌ Not           |
+| `.avi`          | 5               | 5               | 0               | ❌ Not           |
+| `.pic`          | 5               | 0               | 5               | ✅ Yes           |
+| `.AFP`          | 3               | 3               | 0               | ❌ Not           |
+| `.exe`          | 2               | 2               | 0               | ❌ Not           |
