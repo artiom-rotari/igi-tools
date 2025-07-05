@@ -29,7 +29,7 @@ python -m pip install --upgrade igipy
    python -m igipy --version
    ```
 
-   You should see output like `Version: 0.2.0` or higher.
+   You should see output like `Version: 0.2.1` or higher.
 
 3. To see available modules:
 
@@ -40,61 +40,63 @@ python -m pip install --upgrade igipy
 4. Generate the configuration file:
 
    ```bash
-   python -m igipy --config
+   python -m igipy
    ```
 
-   This will create `igipy.json` in the current directory. Open it and set the `"game_dir"` to your IGI 1 installation path, for example:
+   This will create `igipy.json` in the current directory. Open it and set the `"source_dir"` to your IGI 1 installation path, for example:
 
    ```json
    {
-     "game_dir": "C:/Users/artiom.rotari/Desktop/ProjectIGI",
-     "archive_dir": "./archive",
-     "convert_dir": "./convert"
+     "igi1": {
+       "source_dir": "C:/Games/ProjectIGI",
+       "unpack_dir": "./unpack",
+       "target_dir": "./target"
+     }
    }
    ```
 
 5. Verify configuration:
 
    ```bash
-   python -m igipy --config
+   python -m igipy
    ```
 
-   If everything is configured correctly, you should see no warnings below the settings output.
+   If everything is configured correctly, you should see no warnings below the help message.
 
 ## User Guide
 
-### Extract `.res` Archives
+### Extract IGI 1 `.res` Files
 
 ```bash
-python -m igipy res convert-all
+python -m igipy igi1 convert-all-res
 ```
 
-* Converts archive `.res` files to `.zip` (in `archive_dir`)
-* Converts text `.res` files to `.json` (in `convert_dir`)
+* Converts archive `.res` files to `.zip` (in `unpack_dir`)
+* Converts text `.res` files to `.json` (in `target_dir`)
 
-### Convert `.wav` Files
+### Convert IGI 1 `.wav` Files
 
 ```bash
-python -m igipy wav convert-all
+python -m igipy igi1 convert-all-wav
 ```
 
-Converts all `.wav` files (from `game_dir` and `.zip` archives) to standard `.wav` in `convert_dir`.
+Converts all `.wav` files (from `source_dir` and `.zip` archives) to standard `.wav` in `target_dir`.
 
-### Convert `.qvm` Files
+### Convert IGI 1 `.qvm` Files
 
 ```bash
-python -m igipy qvm convert-all
+python -m igipy igi1 convert-all-qvm
 ```
 
-Converts `.qvm` files in `game_dir` to `.qsc` format in `convert_dir`.
+Converts `.qvm` files in `source_dir` to `.qsc` format in `target_dir`.
 
-### Convert `.tex`, `.spr`, and `.pic` Files
+### Convert IGI 1 `.tex`, `.spr`, and `.pic` Files
 
 ```bash
-python -m igipy tex convert-all
+python -m igipy igi1 convert-all-tex
 ```
 
-Converts `.tex`, `.spr`, and `.pic` files (from `game_dir` and archives) to `.tga` in `convert_dir`.
+Converts `.tex`, `.spr`, and `.pic` files (from `source_dir` and archives) to `.tga` in `target_dir`.
 
 ## Supported Game File Formats
 

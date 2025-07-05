@@ -1,4 +1,3 @@
-from collections.abc import Generator
 from pathlib import Path
 from typing import Annotated
 
@@ -12,9 +11,9 @@ class BaseManager(BaseModel):
 
 
 class IGI1Manager(BaseManager):
-    source_dir: PosixPath = Path(".ignore/ProjectIGI")
-    unpack_dir: PosixPath = Path(".ignore/ProjectIGI Resources/archive")
-    target_dir: PosixPath = Path(".ignore/ProjectIGI Resources/convert")
+    source_dir: PosixPath = Path("C:/Games/ProjectIGI")
+    unpack_dir: PosixPath = Path("./unpack")
+    target_dir: PosixPath = Path("./target")
 
     # noinspection PyNestedDecorators
     @field_validator("source_dir", mode="after")
@@ -39,8 +38,3 @@ class IGI1Manager(BaseManager):
             raise ValueError(f"{value.as_posix()} is not a directory")
 
         return value
-
-    def search_iff(self) -> Generator[Path]:
-        for path in self.source_dir.glob("**/*.iff"):
-            if path.is_file(follow_symlinks=False):
-                yield path
