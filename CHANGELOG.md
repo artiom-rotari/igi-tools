@@ -36,7 +36,7 @@ Minor fixes
 
 ## [0.2.0] - 2025-07-04
 
-Refactor package organization and add .tex support.
+Refactor the package organization and add .tex support.
 
 ### Added
 - Convert .tex, .spr, .pic to .tga
@@ -50,3 +50,15 @@ Refactor package organization and add .tex support.
 - Removed `igipy res unpack` and `igipy res unpack-all` if favor of `igipy res convert-all`
 - Removed `igipy qvm convert`
 - Removed `igipy wav convert`
+
+## [0.2.1] - 2025-07-05
+
+Prepare for adding support of multiple games.
+
+### Changed 
+- Removed `igipy --config`. Now the configuration file is created and checked before invoking any command. 
+- Command `igipy res convert-all` moved to `igipy igi1 convert-all-res`
+- Command `igipy wav convert-all` moved to `igipy igi1 convert-all-wav`
+- Command `igipy res convert-qvm` moved to `igipy igi1 convert-all-qvm`
+- Command `igipy tex convert-all` moved to `igipy igi1 convert-all-tex`
+- Configuration file structure has two levels now. The first one is the name of the game.
