@@ -32,3 +32,21 @@ Minor fixes
 - Fixed script name in `pyproject.toml`
 - Bump up `pydantic-settings` version
 - Code clean
+
+
+## [0.2.0] - 2025-07-04
+
+Refactor package organization and add .tex support.
+
+### Added
+- Convert .tex, .spr, .pic to .tga
+- Convert text .res to .json
+- Convert file .res to .zip instead directory
+
+### Changed
+- Removed `igipy version` command and added `igipy --version` flag.
+- Config file renamed from `igi.json` into `igipy.json`
+- Removed `igipy config-initialize` and `igipy config-check` if favor of `igipy --config`
+- Removed `igipy res unpack` and `igipy res unpack-all` if favor of `igipy res convert-all`
+- Removed `igipy qvm convert`
+- Removed `igipy wav convert`
