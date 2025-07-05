@@ -16,10 +16,10 @@ class WAV(base.FileModel):
     content: bytes
 
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
         header = WAVHeader.model_validate_stream(stream)
         content = stream.read()
-        return cls(meta_path=path, meta_size=size, header=header, content=content)
+        return cls(header=header, content=content)
 
     @property
     def samples(self) -> bytes:

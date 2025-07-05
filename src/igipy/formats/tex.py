@@ -19,7 +19,7 @@ class TEX(base.FileModel):
     variant: Union["TEX02", "TEX07", "TEX09", "TEX11"]
 
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
         signature, version = struct.unpack("4sI", stream.read(8))
 
         stream.seek(0)
@@ -35,7 +35,7 @@ class TEX(base.FileModel):
         else:
             raise ValueError(f"Unsupported version: {version}")
 
-        return cls(meta_path=path, meta_size=size, variant=variant)
+        return cls(variant=variant)
 
     def model_dump_stream(self, path: base.Path, stream: BytesIO) -> tuple[base.Path, BytesIO]:
         if isinstance(self.variant, TEX02):

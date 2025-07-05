@@ -16,10 +16,13 @@ class FileModel(BaseModel):
         file_path = Path(path)
         file_bytes = file_path.read_bytes()
         file_stream = BytesIO(file_bytes)
-        return cls.model_validate_stream(file_stream, path=file_path.as_posix(), size=len(file_bytes))
+        instance = cls.model_validate_stream(file_stream)
+        instance.meta_path = file_path
+        instance.meta_size = len(file_bytes)
+        return instance
 
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
         raise NotImplementedError
 
     def model_dump_file(self, path: Path | None = None, stream: BytesIO | None = None) -> tuple[Path, BytesIO]:

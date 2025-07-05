@@ -133,7 +133,7 @@ class RES(base.FileModel):
     content: list[RESFile]
 
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
         header = RESHeader.model_validate_stream(stream)
 
         align(stream, header.padding)
@@ -148,7 +148,7 @@ class RES(base.FileModel):
             if res_file.chunk_b.header.next_position == 0:
                 break
 
-        return cls(meta_path=path, meta_size=size, header=header, content=content)
+        return cls(header=header, content=content)
 
     def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
         if all(res_file.chunk_b.header.signature in {b"BODY", b"PATH"} for res_file in self.content):

@@ -1004,11 +1004,8 @@ class QVM(FileModel):
     instructions: QVMInstructionDict
 
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO, path: str | None = None, size: int | None = None) -> Self:
-        instance = cls.model_validate_bytes(data=stream.read())
-        instance.meta_path = path
-        instance.meta_size = size
-        return instance
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        return cls.model_validate_bytes(data=stream.read())
 
     @classmethod
     def model_validate_bytes(cls, data: bytes) -> Self:
