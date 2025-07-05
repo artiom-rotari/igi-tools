@@ -1,179 +1,117 @@
 import json
 from io import BytesIO
 from pathlib import Path
-from struct import Struct
-from typing import ClassVar, Literal, Self
+from typing import ClassVar, Literal
 from zipfile import ZipFile
 
-from pydantic import BaseModel, Field, NonNegativeInt
+from pydantic import Field, field_validator
 
-from . import base
-
-
-def align(stream: BytesIO, padding: int) -> None:
-    padding_length = (padding - stream.tell() % padding) % padding
-    padding_data = stream.read(padding_length)
-
-    if padding_data != b"\x00" * padding_length:
-        message = f"Expected padding data to be null bytes: {padding_data}"
-        raise ValueError(message)
+from igipy.formats import ilff
 
 
-class ChunkHeader(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("4s3I")
-
-    signature: bytes = Field(min_length=4, max_length=4)
-    length: NonNegativeInt
-    padding: Literal[4, 32]
-    next_position: NonNegativeInt
-
-
-class Chunk(BaseModel):
-    header: ChunkHeader
-    content: bytes
-
+class NAMEChunk(ilff.Chunk):
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        # noinspection PyTypeChecker
-        header_class: ChunkHeader = cls.__pydantic_fields__["header"].annotation
-        header = header_class.model_validate_stream(stream)
-
-        align(stream, header.padding)
-
-        content = stream.read(header.length)
-        return cls(header=header, content=content)
-
-
-class ChunkPair(BaseModel):
-    chunk_a: Chunk
-    chunk_b: Chunk
-
-    @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        # noinspection PyTypeChecker
-        chunk_a_class: Chunk = cls.__pydantic_fields__["chunk_a"].annotation
-        # noinspection PyTypeChecker
-        chunk_b_class: Chunk = cls.__pydantic_fields__["chunk_b"].annotation
-
-        chunks = []
-
-        for chunk_class in (chunk_a_class, chunk_b_class):
-            position = stream.tell()
-            chunk = chunk_class.model_validate_stream(stream)
-            chunks.append(chunk)
-            stream.seek(position + chunk.header.next_position)
-
-        return cls(**dict(zip(("chunk_a", "chunk_b"), chunks, strict=True)))
-
-
-class RESChunkNAMEHeader(ChunkHeader):
-    signature: Literal[b"NAME"]
-
-
-class RESChunkNAME(Chunk):
-    header: RESChunkNAMEHeader
+    def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
+        if header.fourcc != b"NAME":
+            raise ValueError(f"Expected NAME header, got {header.fourcc}")
 
     def get_cleaned_content(self) -> str:
         return self.content.removesuffix(b"\x00").decode("latin1")
 
 
-class RESChunkBODYHeader(ChunkHeader):
-    signature: Literal[b"BODY", b"PATH", b"CSTR"]
+class BODYChunk(ilff.Chunk):
+    @classmethod
+    def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
+        if header.fourcc != b"BODY":
+            raise ValueError(f"Expected BODY header, got {header.fourcc}")
 
 
-class RESChunkBODY(Chunk):
-    header: RESChunkBODYHeader
+class CSTRChunk(ilff.Chunk):
+    @classmethod
+    def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
+        if header.fourcc != b"CSTR":
+            raise ValueError(f"Expected CSTR header, got {header.fourcc}")
 
-    def get_cleaned_content(self) -> bytes | str:
-        if self.header.signature == b"BODY":
-            return self.content
-        if self.header.signature in {b"PATH", b"CSTR"}:
-            return self.content.removesuffix(b"\x00").decode("latin1")
-        raise ValueError(f"Unsupported chunk signature: {self.header.signature}")
-
-
-class RESHeader(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("4s3I4s")
-
-    signature: Literal[b"ILFF"]
-    length: NonNegativeInt
-    padding: Literal[4, 32]
-    next_position: NonNegativeInt
-    content_signature: Literal[b"IRES"]
+    def get_cleaned_content(self) -> str:
+        return self.content.removesuffix(b"\x00").decode("latin1")
 
 
-class RESFile(ChunkPair):
-    chunk_a: RESChunkNAME
-    chunk_b: RESChunkBODY
+class PATHChunk(ilff.Chunk):
+    @classmethod
+    def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
+        if header.fourcc != b"PATH":
+            raise ValueError(f"Expected PATH header, got {header.fourcc}")
 
-    def is_file(self) -> bool:
-        return self.chunk_b.header.signature == b"BODY"
-
-    def is_text(self) -> bool:
-        return self.chunk_b.header.signature == b"CSTR"
-
-    def is_path(self) -> bool:
-        return self.chunk_b.header.signature == b"PATH"
-
-    @property
-    def file_name(self) -> str:
-        if not self.is_file():
-            raise ValueError(f"Is not a file: {self.name.get_cleaned_content()}")
-        return self.chunk_a.get_cleaned_content().removeprefix("LOCAL:")
-
-    @property
-    def file_content(self) -> bytes | str:
-        if not self.is_file():
-            raise ValueError(f"Is not a file: {self.name.get_cleaned_content()}")
-        return self.chunk_b.get_cleaned_content()
+    def get_cleaned_content(self) -> str:
+        return self.content.removesuffix(b"\x00").decode("latin1")
 
 
-class RES(base.FileModel):
-    header: RESHeader
-    content: list[RESFile]
+class RES(ilff.ILFF):
+    content_chunks: ClassVar[dict[bytes, type[ilff.Chunk]]] = {
+        b"NAME": NAMEChunk,
+        b"BODY": BODYChunk,
+        b"CSTR": CSTRChunk,
+        b"PATH": PATHChunk,
+    }
+
+    content_type: Literal[b"IRES"] = Field(description="Content type")
+    content: list[NAMEChunk | BODYChunk | CSTRChunk | PATHChunk]
+
+    # noinspection PyNestedDecorators
+    @field_validator("content", mode="after")
+    @classmethod
+    def validate_content(cls, value: list[ilff.Chunk]) -> list[ilff.Chunk]:
+        if len(value) % 2 != 0:
+            raise ValueError("Content length is not even")
+
+        for chunk_a, chunk_b in zip(value[::2], value[1::2], strict=True):
+            if chunk_a.header.fourcc != b"NAME":
+                raise ValueError("Expected NAME chunk before BODY/CSTR/PATH chunk")
+
+            if chunk_b.header.fourcc not in {b"BODY", b"CSTR", b"PATH"}:
+                raise ValueError("Expected BODY/CSTR/PATH chunk after NAME chunk")
+
+        return value
 
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
-        header = RESHeader.model_validate_stream(stream)
+    def model_validate_chunk(cls, stream: BytesIO, header: ilff.ChunkHeader) -> ilff.Chunk:
+        chunk_model = cls.content_chunks.get(header.fourcc)
 
-        align(stream, header.padding)
+        if not chunk_model:
+            raise ValueError(f"Unsupported chunk signature: {header.fourcc}")
 
-        content = []
-
-        while True:
-            res_file = RESFile.model_validate_stream(stream)
-
-            content.append(res_file)
-
-            if res_file.chunk_b.header.next_position == 0:
-                break
-
-        return cls(header=header, content=content)
+        return chunk_model.model_validate_stream(stream, header)
 
     def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
-        if all(res_file.chunk_b.header.signature in {b"BODY", b"PATH"} for res_file in self.content):
+        pairs = list(zip(self.content[::2], self.content[1::2], strict=False))
+
+        if pairs[-1][1].header.fourcc == b"PATH":
+            pairs = pairs[:-1]
+
+        types = set(chunk_b.header.fourcc for _, chunk_b in pairs)
+
+        if types == {b"BODY"}:
             path = path.with_suffix(".zip")
 
             with ZipFile(stream, "w") as zip_stream:
-                for res_file in self.content:
-                    if res_file.is_file():
-                        zip_stream.writestr(res_file.file_name, res_file.file_content)
+                for chunk_a, chunk_b in pairs:
+                    zip_stream.writestr(chunk_a.get_cleaned_content(), chunk_b.content)
 
-        elif all(res_file.chunk_b.header.signature in {b"CSTR", b"PATH"} for res_file in self.content):
+            return path, stream
+
+        if types == {b"CSTR"}:
             path = path.with_suffix(".json")
 
             content = [
                 {
-                    "key": res_file.chunk_a.get_cleaned_content(),
-                    "value": res_file.chunk_b.get_cleaned_content(),
+                    "key": chunk_a.get_cleaned_content(),
+                    "value": chunk_b.get_cleaned_content(),
                 }
-                for res_file in self.content
-                if res_file.is_text()
+                for chunk_a, chunk_b in pairs
             ]
 
             stream.write(json.dumps(content, indent=4).encode())
 
-        else:
-            raise ValueError("Current is neither a file container nor a text container")
+            return path, stream
 
-        return path, stream
+        raise ValueError(f"Unknown file container type: {types}")
