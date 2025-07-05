@@ -12,8 +12,7 @@ from igipy.formats import ilff
 class NAMEChunk(ilff.Chunk):
     @classmethod
     def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
-        if header.fourcc != b"NAME":
-            raise ValueError(f"Expected NAME header, got {header.fourcc}")
+        ilff.model_validate_header(header, fourcc=b"NAME")
 
     def get_cleaned_content(self) -> str:
         return self.content.removesuffix(b"\x00").decode("latin1")
@@ -22,15 +21,13 @@ class NAMEChunk(ilff.Chunk):
 class BODYChunk(ilff.Chunk):
     @classmethod
     def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
-        if header.fourcc != b"BODY":
-            raise ValueError(f"Expected BODY header, got {header.fourcc}")
+        ilff.model_validate_header(header, fourcc=b"BODY")
 
 
 class CSTRChunk(ilff.Chunk):
     @classmethod
     def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
-        if header.fourcc != b"CSTR":
-            raise ValueError(f"Expected CSTR header, got {header.fourcc}")
+        ilff.model_validate_header(header, fourcc=b"CSTR")
 
     def get_cleaned_content(self) -> str:
         return self.content.removesuffix(b"\x00").decode("latin1")
@@ -39,15 +36,14 @@ class CSTRChunk(ilff.Chunk):
 class PATHChunk(ilff.Chunk):
     @classmethod
     def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
-        if header.fourcc != b"PATH":
-            raise ValueError(f"Expected PATH header, got {header.fourcc}")
+        ilff.model_validate_header(header, fourcc=b"PATH")
 
     def get_cleaned_content(self) -> str:
         return self.content.removesuffix(b"\x00").decode("latin1")
 
 
 class RES(ilff.ILFF):
-    content_chunks: ClassVar[dict[bytes, type[ilff.Chunk]]] = {
+    chunk_mapping: ClassVar[dict[bytes, type[ilff.Chunk]]] = {
         b"NAME": NAMEChunk,
         b"BODY": BODYChunk,
         b"CSTR": CSTRChunk,
@@ -72,15 +68,6 @@ class RES(ilff.ILFF):
                 raise ValueError("Expected BODY/CSTR/PATH chunk after NAME chunk")
 
         return value
-
-    @classmethod
-    def model_validate_chunk(cls, stream: BytesIO, header: ilff.ChunkHeader) -> ilff.Chunk:
-        chunk_model = cls.content_chunks.get(header.fourcc)
-
-        if not chunk_model:
-            raise ValueError(f"Unsupported chunk signature: {header.fourcc}")
-
-        return chunk_model.model_validate_stream(stream, header)
 
     def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
         pairs = list(zip(self.content[::2], self.content[1::2], strict=False))

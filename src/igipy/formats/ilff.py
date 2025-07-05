@@ -54,6 +54,8 @@ class ILFFHeader(ChunkHeader):
 
 
 class ILFF(FileModel):
+    chunk_mapping: ClassVar[dict[bytes, type[Chunk]]] = {}
+
     header: ILFFHeader
     content_type: bytes
     content: list[Chunk]
@@ -88,4 +90,9 @@ class ILFF(FileModel):
 
     @classmethod
     def model_validate_chunk(cls, stream: BytesIO, header: ChunkHeader) -> Chunk:
-        return Chunk.model_validate_stream(stream, header)
+        return cls.content_chunks.get(header.fourcc, Chunk).model_validate_stream(stream, header)
+
+
+def model_validate_header(header: ChunkHeader, fourcc: bytes) -> None:
+    if header.fourcc != fourcc:
+        raise ValueError(f"Expected {fourcc} header, got {header.fourcc}")
