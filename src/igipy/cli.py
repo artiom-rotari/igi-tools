@@ -85,6 +85,21 @@ def igi1_convert_all_tex(dry: bool = False) -> None:
     )
 
 
+@igi1_app.command(
+    name="convert-all",
+    short_help="Convert all known formats found in source_dir",
+)
+def igi1_convert_all() -> None:
+    typer.secho("Converting `.res`...", fg="green")
+    igi1_convert_all_res(dry=False)
+    typer.secho("Converting `.wav`...", fg="green")
+    igi1_convert_all_wav(dry=False)
+    typer.secho("Converting `.qvm`...", fg="green")
+    igi1_convert_all_qvm(dry=False)
+    typer.secho("Converting `.tex`...", fg="green")
+    igi1_convert_all_tex(dry=False)
+
+
 # ------------------------------------------------------
 
 dev_app = typer.Typer(
