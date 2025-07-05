@@ -90,7 +90,7 @@ class ILFF(FileModel):
 
     @classmethod
     def model_validate_chunk(cls, stream: BytesIO, header: ChunkHeader) -> Chunk:
-        return cls.content_chunks.get(header.fourcc, Chunk).model_validate_stream(stream, header)
+        return cls.chunk_mapping.get(header.fourcc, Chunk).model_validate_stream(stream, header)
 
 
 def model_validate_header(header: ChunkHeader, fourcc: bytes) -> None:
