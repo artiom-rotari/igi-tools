@@ -1,6 +1,4 @@
-import zipfile
 from collections.abc import Generator
-from fnmatch import fnmatch
 from io import BytesIO
 from pathlib import Path
 
@@ -9,69 +7,13 @@ import typer
 from igipy import formats
 
 
-def validate_file_path_exists(path: Path | str) -> Path:
-    path = Path(path)
-
-    if not path.exists():
-        typer.echo(typer.style(f"{path.as_posix()} doesn't exists", fg=typer.colors.RED))
-
-    if not path.is_file(follow_symlinks=False):
-        typer.echo(typer.style(f"{path.as_posix()} is not a file", fg=typer.colors.RED))
-
-    return path
-
-
-def validate_file_path_not_exists(path: Path) -> Path:
-    path = Path(path)
-
-    if path.exists():
-        typer.echo(typer.style(f"{path.as_posix()} exists", fg=typer.colors.RED))
-
-    return path
-
-
-def search_for_convert_in_directory(patterns: list[str], directory: Path) -> Generator[tuple[Path, Path, BytesIO]]:
-    for src in directory.glob("**/*"):
-        for pattern in patterns:
-            if fnmatch(src.as_posix(), pattern) and src.is_file():
-                src_path = src.relative_to(directory)
-                src_stream = BytesIO(src.read_bytes())
-                yield src, src_path, src_stream
-
-
-def search_for_convert_in_zip(patterns: list[str], directory: Path) -> Generator[tuple[Path, Path, BytesIO]]:
-    for zip_path in directory.glob("**/*.zip"):
-        with zipfile.ZipFile(zip_path, "r") as zip_file:
-            for file_info in zip_file.infolist():
-                for pattern in patterns:
-                    if fnmatch(file_info.filename, pattern):
-                        src = zip_path.joinpath(file_info.filename)
-                        src_path = src.relative_to(directory)
-                        src_stream = BytesIO(zip_file.read(file_info))
-                        yield src, src_path, src_stream
-
-
-def search_for_convert(
-    patterns: list[str], src_dir: Path | None = None, zip_dir: Path | None = None
-) -> Generator[tuple[Path, Path, BytesIO]]:
-    if src_dir:
-        yield from search_for_convert_in_directory(patterns=patterns, directory=src_dir)
-
-    if zip_dir:
-        yield from search_for_convert_in_zip(patterns=patterns, directory=zip_dir)
-
-
-def convert_all(  # noqa: PLR0913
-    patterns: list[str],
+def convert_all(
+    searcher: Generator[tuple[BytesIO, Path, Path]],
     formater: type[formats.FileModel],
     dst_dir: Path | dict[str, Path],
-    src_dir: Path | None = None,
-    zip_dir: Path | None = None,
     dry: bool = True,
 ) -> None:
-    searcher = search_for_convert(patterns=patterns, src_dir=src_dir, zip_dir=zip_dir)
-
-    for i, (src, src_path, src_stream) in enumerate(searcher, start=1):
+    for i, (src_stream, src_path, src) in enumerate(searcher, start=1):
         try:
             dst_path, dst_stream = formater.model_validate_stream(src_stream).model_dump_file(src_path)
         except formats.base.FileIgnored:

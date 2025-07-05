@@ -25,11 +25,9 @@ def igi1_callback(ctx: typer.Context) -> None:
 )
 def igi1_convert_all_res(dry: bool = False) -> None:
     config = Config.model_validate_file()
-
     utils.convert_all(
-        patterns=["**/*.res"],
+        searcher=config.igi1.res_for_convert(),
         formater=formats.RES,
-        src_dir=config.igi1.source_dir,
         dst_dir={".zip": config.igi1.unpack_dir, ".json": config.igi1.target_dir},
         dry=dry,
     )
@@ -41,12 +39,9 @@ def igi1_convert_all_res(dry: bool = False) -> None:
 )
 def igi1_convert_all_wav(dry: bool = False) -> None:
     config = Config.model_validate_file()
-
     utils.convert_all(
-        patterns=["**/*.wav"],
+        searcher=config.igi1.wav_for_convert(),
         formater=formats.WAV,
-        src_dir=config.igi1.source_dir,
-        zip_dir=config.igi1.unpack_dir,
         dst_dir=config.igi1.target_dir,
         dry=dry,
     )
@@ -58,11 +53,9 @@ def igi1_convert_all_wav(dry: bool = False) -> None:
 )
 def igi1_convert_all_qvm(dry: bool = False) -> None:
     config = Config.model_validate_file()
-
     utils.convert_all(
-        patterns=["**/*.qvm"],
+        searcher=config.igi1.qvm_for_convert(),
         formater=formats.QVM,
-        src_dir=config.igi1.source_dir,
         dst_dir=config.igi1.target_dir,
         dry=dry,
     )
@@ -76,10 +69,8 @@ def igi1_convert_all_tex(dry: bool = False) -> None:
     config = Config.model_validate_file()
 
     utils.convert_all(
-        patterns=["**/*.tex", "**/*.spr", "**/*.pic"],
+        searcher=config.igi1.tex_for_convert(),
         formater=formats.TEX,
-        src_dir=config.igi1.source_dir,
-        zip_dir=config.igi1.unpack_dir,
         dst_dir=config.igi1.target_dir,
         dry=dry,
     )
