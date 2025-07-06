@@ -1,10 +1,10 @@
 import json
 from io import BytesIO
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Self
 from zipfile import ZipFile
 
-from pydantic import Field, field_validator
+from pydantic import Field
 
 from igipy.formats import ilff
 
@@ -51,37 +51,35 @@ class RES(ilff.ILFF):
     }
 
     content_type: Literal[b"IRES"] = Field(description="Content type")
-    content: list[NAMEChunk | BODYChunk | CSTRChunk | PATHChunk]
+    content_pairs: list[tuple[NAMEChunk, BODYChunk]] | list[tuple[NAMEChunk, CSTRChunk]]
+    content_paths: tuple[NAMEChunk, PATHChunk] | None = None
 
-    # noinspection PyNestedDecorators
-    @field_validator("content", mode="after")
     @classmethod
-    def validate_content(cls, value: list[ilff.Chunk]) -> list[ilff.Chunk]:
-        if len(value) % 2 != 0:
-            raise ValueError("Content length is not even")
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        header, content_type, chunks = super().model_validate_chunks(stream)
 
-        for chunk_a, chunk_b in zip(value[::2], value[1::2], strict=True):
-            if chunk_a.header.fourcc != b"NAME":
-                raise ValueError("Expected NAME chunk before BODY/CSTR/PATH chunk")
+        if content_type != b"IRES":
+            raise ValueError(f"Unknown content type: {content_type}")
 
-            if chunk_b.header.fourcc not in {b"BODY", b"CSTR", b"PATH"}:
-                raise ValueError("Expected BODY/CSTR/PATH chunk after NAME chunk")
+        content_pairs = list(zip(chunks[::2], chunks[1::2], strict=True))
+        content_paths = content_pairs.pop(-1) if content_pairs[-1][1].header.fourcc == b"PATH" else None
 
-        return value
+        # noinspection PyTypeChecker
+        return cls(
+            header=header,
+            content_type=content_type,
+            content_pairs=content_pairs,
+            content_paths=content_paths,
+        )
 
     def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
-        pairs = list(zip(self.content[::2], self.content[1::2], strict=False))
-
-        if pairs[-1][1].header.fourcc == b"PATH":
-            pairs = pairs[:-1]
-
-        types = set(chunk_b.header.fourcc for _, chunk_b in pairs)
+        types = {chunk_b.header.fourcc for _, chunk_b in self.content_pairs}
 
         if types == {b"BODY"}:
             path = path.with_suffix(".zip")
 
             with ZipFile(stream, "w") as zip_stream:
-                for chunk_a, chunk_b in pairs:
+                for chunk_a, chunk_b in self.content_pairs:
                     zip_stream.writestr(chunk_a.get_cleaned_content(), chunk_b.content)
 
             return path, stream
@@ -94,7 +92,7 @@ class RES(ilff.ILFF):
                     "key": chunk_a.get_cleaned_content(),
                     "value": chunk_b.get_cleaned_content(),
                 }
-                for chunk_a, chunk_b in pairs
+                for chunk_a, chunk_b in self.content_pairs
             ]
 
             stream.write(json.dumps(content, indent=4).encode())

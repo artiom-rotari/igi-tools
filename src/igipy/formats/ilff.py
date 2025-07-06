@@ -1,6 +1,6 @@
 from io import BytesIO
 from struct import Struct
-from typing import Any, ClassVar, Literal, Self
+from typing import ClassVar, Literal, Self
 
 from pydantic import BaseModel, Field, NonNegativeInt
 
@@ -45,7 +45,7 @@ class Chunk(BaseModel):
         pass
 
     @classmethod
-    def model_validate_content(cls, content: bytes) -> Any:
+    def model_validate_content(cls, content: bytes) -> bytes | BaseModel:
         return content
 
 
@@ -58,10 +58,9 @@ class ILFF(FileModel):
 
     header: ILFFHeader
     content_type: bytes
-    content: list[Chunk]
 
     @classmethod
-    def model_validate_stream(cls, stream: BytesIO) -> Self:
+    def model_validate_chunks(cls, stream: BytesIO) -> tuple[ILFFHeader, bytes, list[Chunk]]:
         header = ILFFHeader.model_validate_stream(stream)
         content_type = stream.read(4)
         content = []
@@ -86,7 +85,7 @@ class ILFF(FileModel):
         if stream.read(1) != b"":
             raise ValueError("Expected end of stream")
 
-        return cls(header=header, content_type=content_type, content=content)
+        return header, content_type, content
 
     @classmethod
     def model_validate_chunk(cls, stream: BytesIO, header: ChunkHeader) -> Chunk:
