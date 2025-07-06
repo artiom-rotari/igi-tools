@@ -1,7 +1,7 @@
-import struct
 from abc import ABC, abstractmethod
 from io import BytesIO
 from pathlib import Path
+from struct import calcsize, unpack
 from typing import Any, BinaryIO, Literal, Optional, Self
 
 from pydantic import BaseModel, NonNegativeInt
@@ -83,8 +83,8 @@ class InstructionILLEGAL(UnsupportedQVMInstruction):
 
 
 def read_argument(stream: BinaryIO, argument_format: str) -> tuple[Any, ...]:
-    argument_bytes = stream.read(struct.calcsize(argument_format))
-    return struct.unpack(argument_format, argument_bytes)
+    argument_bytes = stream.read(calcsize(argument_format))
+    return unpack(argument_format, argument_bytes)
 
 
 # noinspection DuplicatedCode
@@ -205,7 +205,7 @@ class InstructionCALL(QVMInstruction):
     def model_validate_stream(cls, stream: BinaryIO, address: NonNegativeInt) -> Self:
         argument_count: int = read_argument(stream, "<I")[0]
         argument_bytes = stream.read(4 * argument_count)
-        argument = struct.unpack("<" + "i" * argument_count, argument_bytes)
+        argument = unpack("<" + "i" * argument_count, argument_bytes)
         return cls(address=address, address_next=stream.tell(), argument=argument)
 
 
@@ -824,12 +824,12 @@ class QVMHeader(BaseModel):
 
     @classmethod
     def model_validate_bytes(cls, data: bytes) -> "QVMHeader":
-        obj_values = struct.unpack("4s14I", data[:60])
+        obj_values = unpack("4s14I", data[:60])
         obj_mapping = dict(zip(cls.__pydantic_fields__.keys(), obj_values, strict=False))
         obj = cls(**obj_mapping)
 
         if obj.minor_version == 5 and len(data[60:]) > 4:  # noqa: PLR2004
-            footer_offset = struct.unpack("I", data[60:64])[0]
+            footer_offset = unpack("I", data[60:64])[0]
             obj.footer_data_offset = footer_offset
 
         return obj

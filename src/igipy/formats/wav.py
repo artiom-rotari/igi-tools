@@ -44,7 +44,7 @@ class WAV(base.FileModel):
 
 
 class WAVHeader(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("4s4H2I")
+    struct: ClassVar[Struct] = Struct("4s4H2I")
 
     signature: Literal[b"ILSF"]
     sound_pack: Literal[0, 1, 2, 3]

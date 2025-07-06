@@ -41,14 +41,24 @@ class FileIgnored(NotImplementedError):  # noqa: N818
 
 
 class StructModel(BaseModel):
-    _struct: ClassVar[Struct] = None
+    struct: ClassVar[Struct] = None
 
     @classmethod
     def model_validate_stream(cls, stream: BytesIO) -> Self:
         cls_fields = cls.__pydantic_fields__.keys()
-        cls_values = cls._struct.unpack(stream.read(cls._struct.size))
+        cls_values = cls.struct.unpack(stream.read(cls.struct.size))
         # noinspection PyArgumentList
         return cls(**dict(zip(cls_fields, cls_values, strict=True)))
+
+    @classmethod
+    def unpack_many(cls, data: bytes) -> list[Self]:
+        length, remainder = divmod(len(data), cls.struct.size)
+
+        if remainder != 0:
+            raise ValueError(f"Data length {len(data)} is not divisible by struct size {cls.struct.size}")
+
+        stream = BytesIO(data)
+        return [cls.model_validate_stream(stream) for _ in range(length)]
 
 
 class PixelFormat(str, Enum):

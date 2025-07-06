@@ -1,6 +1,5 @@
-import struct
 from io import BytesIO
-from struct import Struct
+from struct import Struct, unpack
 from typing import ClassVar, Literal, Self, Union
 
 import numpy as np
@@ -20,7 +19,7 @@ class TEX(base.FileModel):
 
     @classmethod
     def model_validate_stream(cls, stream: BytesIO) -> Self:
-        signature, version = struct.unpack("4sI", stream.read(8))
+        signature, version = unpack("4sI", stream.read(8))
 
         stream.seek(0)
 
@@ -229,7 +228,7 @@ class TEX06(BaseModel):
 
 
 class TEX02Header(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("4sI8H")
+    struct: ClassVar[Struct] = Struct("4sI8H")
 
     signature: Literal[b"LOOP"]
     version: Literal[2]
@@ -244,7 +243,7 @@ class TEX02Header(base.StructModel):
 
 
 class TEX07Header(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("4s12I")
+    struct: ClassVar[Struct] = Struct("4s12I")
 
     signature: Literal[b"LOOP"]
     version: Literal[7]
@@ -271,7 +270,7 @@ class TEX09Header(TEX07Header):
 
 
 class TEX11Header(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("4s4I6H")
+    struct: ClassVar[Struct] = Struct("4s4I6H")
 
     signature: Literal[b"LOOP"]
     version: Literal[11]
@@ -321,7 +320,7 @@ class Mipmap(BaseModel):
 
 
 class TEX06Header(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("4sI4H2I")
+    struct: ClassVar[Struct] = Struct("4sI4H2I")
 
     signature: Literal[b"LOOP"]
     version: Literal[6]
@@ -334,7 +333,7 @@ class TEX06Header(base.StructModel):
 
 
 class TEX06Content(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("4I")
+    struct: ClassVar[Struct] = Struct("4I")
 
     unknown_01: NonNegativeInt
     unknown_02: NonNegativeInt
@@ -343,7 +342,7 @@ class TEX06Content(base.StructModel):
 
 
 class TEX07ItemHeader(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("2I16H")
+    struct: ClassVar[Struct] = Struct("2I16H")
 
     offset: NonNegativeInt
     unknown_01: NonNegativeInt
@@ -366,7 +365,7 @@ class TEX07ItemHeader(base.StructModel):
 
 
 class TEX09ItemHeader(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("2I4H4I")
+    struct: ClassVar[Struct] = Struct("2I4H4I")
 
     offset: NonNegativeInt
     mode: NonNegativeInt

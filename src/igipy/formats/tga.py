@@ -19,7 +19,7 @@ class TGAImageType(int, Enum):
 
 
 class TGAHeader(base.StructModel):
-    _struct: ClassVar[Struct] = Struct("<3B2HB4H2B")
+    struct: ClassVar[Struct] = Struct("<3B2HB4H2B")
 
     id_length: Literal[0]
     color_map_type: Literal[0]
@@ -48,7 +48,7 @@ class TGAHeader(base.StructModel):
         stream = stream or BytesIO()
 
         stream.write(
-            self._struct.pack(
+            self.struct.pack(
                 self.id_length,
                 self.color_map_type,
                 self.image_type,

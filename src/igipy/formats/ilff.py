@@ -8,7 +8,7 @@ from igipy.formats.base import FileModel, StructModel
 
 
 class ChunkHeader(StructModel):
-    _struct: ClassVar[Struct] = Struct("4s3I")
+    struct: ClassVar[Struct] = Struct("4s3I")
 
     fourcc: bytes = Field(min_length=4, max_length=4, description="Chunk signature")
     length: NonNegativeInt = Field(description="Length of chunk")
@@ -28,9 +28,7 @@ class ChunkHeader(StructModel):
 class Chunk(BaseModel):
     meta_start: NonNegativeInt | None = Field(default=None, description="Meta information")
     meta_end: NonNegativeInt | None = Field(default=None, description="Meta information")
-
     header: ChunkHeader
-    content: bytes
 
     @classmethod
     def model_validate_stream(cls, stream: BytesIO, header: ChunkHeader) -> Self:
@@ -38,15 +36,23 @@ class Chunk(BaseModel):
         header.model_validate_padding(stream)
         content = cls.model_validate_content(stream.read(header.length))
         header.model_validate_padding(stream)
-        return cls(header=header, content=content)
+        return cls(header=header, **content)
 
     @classmethod
     def model_validate_header(cls, header: ChunkHeader) -> None:
         pass
 
     @classmethod
-    def model_validate_content(cls, content: bytes) -> bytes | BaseModel:
-        return content
+    def model_validate_content(cls, content: bytes) -> dict:
+        raise NotImplementedError
+
+
+class RawChunk(Chunk):
+    content: bytes
+
+    @classmethod
+    def model_validate_content(cls, content: bytes) -> dict:
+        return {"content": content}
 
 
 class ILFFHeader(ChunkHeader):

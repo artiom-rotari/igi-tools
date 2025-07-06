@@ -9,7 +9,7 @@ from pydantic import Field
 from igipy.formats import ilff
 
 
-class NAMEChunk(ilff.Chunk):
+class NAMEChunk(ilff.RawChunk):
     @classmethod
     def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
         ilff.model_validate_header(header, fourcc=b"NAME")
@@ -18,13 +18,13 @@ class NAMEChunk(ilff.Chunk):
         return self.content.removesuffix(b"\x00").decode("latin1")
 
 
-class BODYChunk(ilff.Chunk):
+class BODYChunk(ilff.RawChunk):
     @classmethod
     def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
         ilff.model_validate_header(header, fourcc=b"BODY")
 
 
-class CSTRChunk(ilff.Chunk):
+class CSTRChunk(ilff.RawChunk):
     @classmethod
     def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
         ilff.model_validate_header(header, fourcc=b"CSTR")
@@ -33,7 +33,7 @@ class CSTRChunk(ilff.Chunk):
         return self.content.removesuffix(b"\x00").decode("latin1")
 
 
-class PATHChunk(ilff.Chunk):
+class PATHChunk(ilff.RawChunk):
     @classmethod
     def model_validate_header(cls, header: ilff.ChunkHeader) -> None:
         ilff.model_validate_header(header, fourcc=b"PATH")
