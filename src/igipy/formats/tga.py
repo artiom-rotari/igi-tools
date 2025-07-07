@@ -3,9 +3,17 @@ from io import BytesIO
 from struct import Struct
 from typing import ClassVar, Literal, Self
 
-from pydantic import BaseModel, Field, NonNegativeInt
+from pydantic import Field, NonNegativeInt
 
-from . import base, const
+from . import FileModel, base
+
+UINT_04 = range(2**4)
+UINT_16 = range(2**16)
+
+
+class PixelFormat(str, Enum):
+    ARGB1555 = "ARGB1555"
+    ARGB8888 = "ARGB8888"
 
 
 class TGAImageType(int, Enum):
@@ -29,10 +37,10 @@ class TGAHeader(base.StructModel):
     color_map_depth: Literal[0]
     x_origin: Literal[0]
     y_origin: Literal[0]
-    width: NonNegativeInt = Field(le=const.UINT_16.stop - 1)
-    height: NonNegativeInt = Field(le=const.UINT_16.stop - 1)
+    width: NonNegativeInt = Field(le=UINT_16.stop - 1)
+    height: NonNegativeInt = Field(le=UINT_16.stop - 1)
     pixel_depth: Literal[8, 16, 24, 32]
-    image_descriptor_alpha_depth: NonNegativeInt = Field(ge=const.UINT_04.start, le=const.UINT_04.stop - 1, default=0)
+    image_descriptor_alpha_depth: NonNegativeInt = Field(ge=UINT_04.start, le=UINT_04.stop - 1, default=0)
     image_descriptor_right_to_left: NonNegativeInt = Field(ge=0, le=1, default=0)
     image_descriptor_bottom_to_top: NonNegativeInt = Field(ge=0, le=1, default=0)
 
@@ -67,15 +75,16 @@ class TGAHeader(base.StructModel):
         return stream
 
 
-class TGA(BaseModel):
+class TGA(FileModel):
     header: TGAHeader
     content: bytes
 
-    def model_dump_stream(self, stream: BytesIO | None = None) -> BytesIO:
+    def model_dump_stream(self) -> tuple[BytesIO, str]:
+        stream = BytesIO()
         stream = self.header.model_dump_stream(stream)
         stream.write(self.content)
         stream.seek(0)
-        return stream
+        return stream, ".tga"
 
     @classmethod
     def from_raw_bytes(  # noqa: PLR0913
@@ -83,15 +92,15 @@ class TGA(BaseModel):
         width: int,
         height: int,
         content: bytes,
-        pixel_format: base.PixelFormat | str,
+        pixel_format: PixelFormat | str,
         right_to_left: bool = False,
         bottom_to_top: bool = False,
     ) -> Self:
-        pixel_format = base.PixelFormat(pixel_format.upper())
+        pixel_format = PixelFormat(pixel_format.upper())
 
-        if pixel_format == base.PixelFormat.ARGB1555:
+        if pixel_format == PixelFormat.ARGB1555:
             return cls.from_raw_bytes_argb1555(width, height, content, right_to_left, bottom_to_top)
-        if pixel_format == base.PixelFormat.ARGB8888:
+        if pixel_format == PixelFormat.ARGB8888:
             return cls.from_raw_bytes_argb8888(width, height, content, right_to_left, bottom_to_top)
 
         raise ValueError(f"Unsupported pixel format: {pixel_format}")
@@ -105,11 +114,11 @@ class TGA(BaseModel):
         right_to_left: bool = False,
         bottom_to_top: bool = False,
     ) -> Self:
-        if width not in const.UINT_16:
-            raise ValueError(f"Width must be in {const.UINT_16}")
+        if width not in UINT_16:
+            raise ValueError(f"Width must be in {UINT_16}")
 
-        if height not in const.UINT_16:
-            raise ValueError(f"Height must be in {const.UINT_16}")
+        if height not in UINT_16:
+            raise ValueError(f"Height must be in {UINT_16}")
 
         if len(content) != width * height * 2:
             raise ValueError("Content size does not match width and height.")
@@ -142,11 +151,11 @@ class TGA(BaseModel):
         right_to_left: bool = False,
         bottom_to_top: bool = False,
     ) -> Self:
-        if width not in const.UINT_16:
-            raise ValueError(f"Width must be in {const.UINT_16}")
+        if width not in UINT_16:
+            raise ValueError(f"Width must be in {UINT_16}")
 
-        if height not in const.UINT_16:
-            raise ValueError(f"Height must be in {const.UINT_16}")
+        if height not in UINT_16:
+            raise ValueError(f"Height must be in {UINT_16}")
 
         if len(content) != width * height * 4:
             raise ValueError("Content size does not match width and height.")

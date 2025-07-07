@@ -36,15 +36,15 @@ class TEX(base.FileModel):
 
         return cls(variant=variant)
 
-    def model_dump_stream(self, path: base.Path, stream: BytesIO) -> tuple[base.Path, BytesIO]:
+    def model_dump_stream(self) -> tuple[BytesIO, str]:
         if isinstance(self.variant, TEX02):
-            return self.variant.model_dump_stream(path, stream)
+            return self.variant.model_dump_stream()
 
         if isinstance(self.variant, (TEX07, TEX09)):
-            return self.variant.model_dump_stream(path, stream)
+            return self.variant.model_dump_stream()
 
         if isinstance(self.variant, TEX11):
-            return self.variant.model_dump_stream(path, stream)
+            return self.variant.model_dump_stream()
 
         raise ValueError(f"Unsupported variant: {self.variant}")
 
@@ -73,18 +73,14 @@ class TEX02(BaseModel):
 
         return cls(header=header, content=content)
 
-    def model_dump_stream(self, path: base.Path, stream: BytesIO) -> tuple[base.Path, BytesIO]:
-        path = path.with_suffix(".tga")
-
-        TGA.from_raw_bytes(
+    def model_dump_stream(self) -> tuple[BytesIO, str]:
+        return TGA.from_raw_bytes(
             width=self.header.width,
             height=self.header.height,
             content=self.content.bitmap,
             pixel_format={2: "ARGB1555", 3: "ARGB8888", 67: "ARGB8888"}[self.header.mode],
             bottom_to_top=True,
-        ).model_dump_stream(stream=stream)
-
-        return path, stream
+        ).model_dump_stream()
 
 
 class TEX07(BaseModel):
@@ -113,19 +109,16 @@ class TEX07(BaseModel):
 
         return cls(header=header, item_headers=item_headers, item_contents=item_contents, footer=footer)
 
-    def model_dump_stream(self, path: base.Path, stream: BytesIO) -> tuple[base.Path, BytesIO]:
-        path = path.with_suffix(".tga")
+    def model_dump_stream(self) -> tuple[BytesIO, str]:
         bitmap = self.bitmap
 
-        TGA.from_raw_bytes(
+        return TGA.from_raw_bytes(
             width=bitmap.shape[1],
             height=bitmap.shape[0],
             content=bitmap.tobytes(),
             pixel_format={2: "ARGB1555", 3: "ARGB8888", 67: "ARGB8888"}[self.header.mode],
             bottom_to_top=True,
-        ).model_dump_stream(stream=stream)
-
-        return path, stream
+        ).model_dump_stream()
 
     @property
     def bitmap(self) -> np.ndarray:
@@ -202,18 +195,14 @@ class TEX11(BaseModel):
 
         return cls(header=header, content=content)
 
-    def model_dump_stream(self, path: base.Path, stream: BytesIO) -> tuple[base.Path, BytesIO]:
-        path = path.with_suffix(".tga")
-
-        TGA.from_raw_bytes(
+    def model_dump_stream(self) -> tuple[BytesIO, str]:
+        return TGA.from_raw_bytes(
             width=self.header.width,
             height=self.header.height,
             content=self.content[0].bitmap,
             pixel_format={2: "ARGB1555", 3: "ARGB8888", 67: "ARGB8888"}[self.header.mode],
             bottom_to_top=True,
-        ).model_dump_stream(stream=stream)
-
-        return path, stream
+        ).model_dump_stream()
 
 
 class TEX06(BaseModel):

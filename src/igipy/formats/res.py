@@ -1,6 +1,5 @@
 import json
 from io import BytesIO
-from pathlib import Path
 from typing import ClassVar, Literal, Self
 from zipfile import ZipFile
 
@@ -72,24 +71,21 @@ class RES(ilff.ILFF):
             content_paths=content_paths,
         )
 
-    def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
+    def model_dump_stream(self) -> tuple[BytesIO, str]:
+        stream = BytesIO()
         types = {chunk_b.header.fourcc for _, chunk_b in self.content_pairs}
 
         if types == {b"BODY"}:
-            path = path.with_suffix(".zip")
-
             with ZipFile(stream, "w") as zip_stream:
                 for chunk_a, chunk_b in self.content_pairs:
-                    zip_stream.writestr(chunk_a.get_cleaned_content(), chunk_b.content)
+                    zip_stream.writestr(chunk_a.get_cleaned_content().removeprefix("LOCAL:"), chunk_b.content)
 
-            return path, stream
+            return stream, ".zip"
 
         if types == {b"CSTR"}:
-            path = path.with_suffix(".json")
-
             content = [
                 {
-                    "key": chunk_a.get_cleaned_content(),
+                    "key": chunk_a.get_cleaned_content().removeprefix("LOCAL:"),
                     "value": chunk_b.get_cleaned_content(),
                 }
                 for chunk_a, chunk_b in self.content_pairs
@@ -97,6 +93,6 @@ class RES(ilff.ILFF):
 
             stream.write(json.dumps(content, indent=4).encode())
 
-            return path, stream
+            return stream, ".json"
 
         raise ValueError(f"Unknown file container type: {types}")

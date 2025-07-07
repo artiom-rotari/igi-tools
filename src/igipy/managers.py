@@ -42,39 +42,34 @@ class IGI1Manager(BaseManager):
 
         return value
 
-    def search_for_convert_in_source(self, patterns: list[str]) -> Generator[tuple[BytesIO, Path, Path]]:
+    def read_from_source(self, patterns: list[str]) -> Generator[tuple[BytesIO, Path, None]]:
         for src_path in self.source_dir.glob("**/*"):
-            for pattern in patterns:
-                if src_path.is_file(follow_symlinks=False) and src_path.match(pattern):
-                    src_relative = src_path.relative_to(self.source_dir)
-                    src_stream = BytesIO(src_path.read_bytes())
-                    yield src_stream, src_relative, src_path
+            if src_path.is_file(follow_symlinks=False) and any(src_path.match(pattern) for pattern in patterns):
+                yield BytesIO(src_path.read_bytes()), src_path.relative_to(self.source_dir), None
 
-    def search_for_convert_in_unpack(self, patterns: list[str]) -> Generator[tuple[BytesIO, Path, Path]]:
+    def read_from_unpack(self, patterns: list[str]) -> Generator[tuple[BytesIO, Path, Path]]:
         for zip_path in self.unpack_dir.glob("**/*.zip"):
             with zipfile.ZipFile(zip_path, "r") as zip_file:
                 for file_info in zip_file.infolist():
-                    src_path = zip_path.joinpath(file_info.filename)
+                    src_path = Path(file_info.filename)
 
-                    for pattern in patterns:
-                        if src_path.match(pattern):
-                            src_relative = src_path.relative_to(self.unpack_dir)
-                            src_stream = BytesIO(zip_file.read(file_info))
-                            yield src_stream, src_relative, src_path
+                    if any(src_path.match(pattern) for pattern in patterns):
+                        src_stream = BytesIO(zip_file.read(file_info))
+                        yield src_stream, src_path, zip_path.relative_to(self.unpack_dir)
 
-    def res_for_convert(self) -> Generator[tuple[BytesIO, Path, Path]]:
-        yield from self.search_for_convert_in_source(patterns=["**/*.res"])
+    def read_all_res(self) -> Generator[tuple[BytesIO, Path, Path | None]]:
+        yield from self.read_from_source(patterns=["**/*.res"])
 
-    def wav_for_convert(self) -> Generator[tuple[BytesIO, Path, Path]]:
-        yield from self.search_for_convert_in_source(patterns=["**/*.wav"])
-        yield from self.search_for_convert_in_unpack(patterns=["**/*.wav"])
+    def read_all_wav(self) -> Generator[tuple[BytesIO, Path, Path | None]]:
+        yield from self.read_from_source(patterns=["**/*.wav"])
+        yield from self.read_from_unpack(patterns=["**/*.wav"])
 
-    def qvm_for_convert(self) -> Generator[tuple[BytesIO, Path, Path]]:
-        yield from self.search_for_convert_in_source(patterns=["**/*.qvm"])
+    def read_all_qvm(self) -> Generator[tuple[BytesIO, Path, Path | None]]:
+        yield from self.read_from_source(patterns=["**/*.qvm"])
 
-    def tex_for_convert(self) -> Generator[tuple[BytesIO, Path, Path]]:
-        yield from self.search_for_convert_in_source(patterns=["**/*.tex", "**/*.spr", "**/*.pic"])
-        yield from self.search_for_convert_in_unpack(patterns=["**/*.tex", "**/*.spr", "**/*.pic"])
+    def read_all_tex(self) -> Generator[tuple[BytesIO, Path, Path | None]]:
+        yield from self.read_from_source(patterns=["**/*.tex", "**/*.spr", "**/*.pic"])
+        yield from self.read_from_unpack(patterns=["**/*.tex", "**/*.spr", "**/*.pic"])
 
-    def mef_for_convert(self) -> Generator[tuple[BytesIO, Path, Path]]:
-        yield from self.search_for_convert_in_unpack(patterns=["**/*.mef"])
+    def read_all_mef(self) -> Generator[tuple[BytesIO, Path, Path | None]]:
+        yield from self.read_from_unpack(patterns=["**/*.mef"])

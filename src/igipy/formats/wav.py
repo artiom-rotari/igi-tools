@@ -1,6 +1,5 @@
 import wave
 from io import BytesIO
-from pathlib import Path
 from struct import Struct
 from typing import ClassVar, Literal, Self
 
@@ -30,9 +29,9 @@ class WAV(base.FileModel):
 
         raise ValueError(f"Unsupported sound pack: {self.header.sound_pack}")
 
-    def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
+    def model_dump_stream(self) -> tuple[BytesIO, str]:
+        stream = BytesIO()
         samples = self.samples
-        path = path.with_suffix(".wav")
 
         with wave.open(stream, "w") as wave_stream:
             wave_stream.setnchannels(self.header.channels)
@@ -40,7 +39,7 @@ class WAV(base.FileModel):
             wave_stream.setframerate(self.header.framerate)
             wave_stream.writeframesraw(samples)
 
-        return path, stream
+        return stream, ".wav"
 
 
 class WAVHeader(base.StructModel):

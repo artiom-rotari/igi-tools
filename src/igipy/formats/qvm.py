@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from io import BytesIO
-from pathlib import Path
 from struct import calcsize, unpack
 from typing import Any, BinaryIO, Literal, Optional, Self
 
@@ -1022,10 +1021,10 @@ class QVM(FileModel):
 
         return cls(header=header, identifiers=identifiers, strings=strings, instructions=instructions)
 
-    def model_dump_stream(self, path: Path, stream: BytesIO) -> tuple[Path, BytesIO]:
-        path = path.with_suffix(".qsc")
+    def model_dump_stream(self) -> tuple[BytesIO, str]:
+        stream = BytesIO()
         stream.write(self.get_statement_list().get_token().encode())
-        return path, stream
+        return stream, ".qsc"
 
     def get_statement_list(self) -> "StatementList":
         return StatementList.from_instructions(

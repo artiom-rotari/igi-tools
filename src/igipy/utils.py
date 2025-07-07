@@ -8,30 +8,41 @@ from igipy import formats
 
 
 def convert_all(
-    searcher: Generator[tuple[BytesIO, Path, Path]],
-    formater: type[formats.FileModel],
-    dst_dir: Path | dict[str, Path],
+    reader: Generator[tuple[BytesIO, Path, Path | None]],
+    parser: type[formats.base.FileModel],
+    router: dict[str, Path],
     dry: bool = True,
 ) -> None:
-    for i, (src_stream, src_path, src) in enumerate(searcher, start=1):
+    for number, (src_stream, src_path, zip_path) in enumerate(reader, start=1):
+        instance = parser.model_validate_stream(src_stream)
+
         try:
-            dst_path, dst_stream = formater.model_validate_stream(src_stream).model_dump_file(src_path)
+            dst_stream, dst_suffix = instance.model_dump_stream()
         except formats.base.FileIgnored:
-            typer.echo(f"Convert [{i:>05}]: {typer.style(src.as_posix(), fg='yellow')} ignored")
             continue
 
-        if isinstance(dst_dir, dict):
-            dst = dst_dir[dst_path.suffix].joinpath(dst_path)
-        elif isinstance(dst_dir, Path):
-            dst = dst_dir.joinpath(dst_path)
+        if zip_path:
+            dst_path = zip_path.joinpath(src_path).with_suffix(dst_suffix)
         else:
-            raise TypeError(f"dst_dir must be Path or dict[str, Path], not {type(dst_dir)}")
+            dst_path = src_path.with_suffix(dst_suffix)
 
-        typer.echo(
-            f'Convert [{i:>05}]: "{typer.style(src.as_posix(), fg="green")}" '
-            f'to "{typer.style(dst.as_posix(), fg="yellow")}"'
-        )
+        for pattern, target_dir in router.items():
+            if dst_path.match(pattern):
+                dst_path = target_dir.joinpath(dst_path)
+                break
+
+        if not zip_path:
+            typer.echo(
+                f'Convert [{number:>05}]: "{typer.style(src_path.as_posix(), fg="green")}" '
+                f'to "{typer.style(dst_path.as_posix(), fg="yellow")}"'
+            )
+        else:
+            typer.echo(
+                f'Convert [{number:>05}]: "{typer.style(src_path.as_posix(), fg="green")}" '
+                f'from "{typer.style(zip_path.as_posix(), fg="red")}" '
+                f'to "{typer.style(dst_path.as_posix(), fg="yellow")}"'
+            )
 
         if not dry:
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            dst.write_bytes(dst_stream.getvalue())
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            dst_path.write_bytes(dst_stream.getvalue())

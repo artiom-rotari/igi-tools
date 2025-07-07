@@ -26,9 +26,9 @@ def igi1_callback(ctx: typer.Context) -> None:
 def igi1_convert_all_res(dry: bool = False) -> None:
     config = Config.model_validate_file()
     utils.convert_all(
-        searcher=config.igi1.res_for_convert(),
-        formater=formats.RES,
-        dst_dir={".zip": config.igi1.unpack_dir, ".json": config.igi1.target_dir},
+        reader=config.igi1.read_all_res(),
+        parser=formats.RES,
+        router={"*.zip": config.igi1.unpack_dir, "*.json": config.igi1.target_dir},
         dry=dry,
     )
 
@@ -40,9 +40,9 @@ def igi1_convert_all_res(dry: bool = False) -> None:
 def igi1_convert_all_wav(dry: bool = False) -> None:
     config = Config.model_validate_file()
     utils.convert_all(
-        searcher=config.igi1.wav_for_convert(),
-        formater=formats.WAV,
-        dst_dir=config.igi1.target_dir,
+        reader=config.igi1.read_all_wav(),
+        parser=formats.WAV,
+        router={"*": config.igi1.target_dir},
         dry=dry,
     )
 
@@ -54,9 +54,9 @@ def igi1_convert_all_wav(dry: bool = False) -> None:
 def igi1_convert_all_qvm(dry: bool = False) -> None:
     config = Config.model_validate_file()
     utils.convert_all(
-        searcher=config.igi1.qvm_for_convert(),
-        formater=formats.QVM,
-        dst_dir=config.igi1.target_dir,
+        reader=config.igi1.read_all_qvm(),
+        parser=formats.QVM,
+        router={"*": config.igi1.target_dir},
         dry=dry,
     )
 
@@ -69,9 +69,9 @@ def igi1_convert_all_tex(dry: bool = False) -> None:
     config = Config.model_validate_file()
 
     utils.convert_all(
-        searcher=config.igi1.tex_for_convert(),
-        formater=formats.TEX,
-        dst_dir=config.igi1.target_dir,
+        reader=config.igi1.read_all_tex(),
+        parser=formats.TEX,
+        router={"*": config.igi1.target_dir},
         dry=dry,
     )
 
