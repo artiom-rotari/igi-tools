@@ -1,4 +1,5 @@
 import string
+import subprocess
 import zipfile
 from collections import defaultdict
 from pathlib import Path
@@ -197,6 +198,18 @@ def printable(src: Path, min_length: int = 5, charset: str = string.printable) -
             if len(word) >= min_length:
                 typer.echo(word.decode())
             word.clear()
+
+
+@app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+    short_help="Run gconv.exe",
+    hidden=True,
+)
+def gconv(ctx: typer.Context):
+    executable = Path(__file__).parent.joinpath("bin/gconv.exe").as_posix()
+    arguments = ctx.args or ["--help"]
+    command = [executable] + arguments
+    subprocess.run(command, check=True)
 
 
 def main() -> None:
