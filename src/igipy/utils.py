@@ -21,10 +21,7 @@ def convert_all(
         except formats.base.FileIgnored:
             continue
 
-        if zip_path:
-            dst_path = zip_path.joinpath(src_path).with_suffix(dst_suffix)
-        else:
-            dst_path = src_path.with_suffix(dst_suffix)
+        dst_path = zip_path.joinpath(src_path).with_suffix(dst_suffix) if zip_path else src_path.with_suffix(dst_suffix)
 
         for pattern, target_dir in router.items():
             if dst_path.match(pattern):
