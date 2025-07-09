@@ -62,3 +62,16 @@ Prepare for adding support of multiple games.
 - Command `igipy res convert-qvm` moved to `igipy igi1 convert-all-qvm`
 - Command `igipy tex convert-all` moved to `igipy igi1 convert-all-tex`
 - Configuration file structure has two levels now. The first one is the name of the game.
+
+## [0.2.2] - 2025-07-09
+
+Prepare for creating `.qsc` files from python and include `gconv.exe` in to the package.
+
+### Added
+- FileModel for `ILFF` formats (usually `.res` and `.mef` files)
+- FileModel for `.mef` files
+- FileModel for `.qsc` files
+
+### Changed
+- Refactor `.res` FileModel
+- Refactor `.qvm` FileModel
