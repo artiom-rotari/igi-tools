@@ -89,7 +89,7 @@ def igi1_extensions(ctx: typer.Context) -> None:
 @dev_app.command(hidden=True)
 def compare(ctx: typer.Context, pattern: str = "invalid-pattern") -> None:
     for initial_path in ctx.obj.igi1.game_dir.glob(pattern):
-        encoded_path = ctx.obj.igi1.encoded_dir / initial_path.relative_to(ctx.obj.igi1.game_dir)
+        encoded_path = ctx.obj.igi1.build_dir / initial_path.relative_to(ctx.obj.igi1.game_dir)
 
         typer.secho(f"Initial: {initial_path.absolute().as_posix()}", fg="green")
 

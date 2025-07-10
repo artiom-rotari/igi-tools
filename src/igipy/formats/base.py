@@ -13,20 +13,9 @@ class FileModel(BaseModel, ABC):
     def model_validate_stream(cls, stream: BytesIO) -> Self:
         """Method to load model from stream"""
 
-    @abstractmethod
-    def model_dump_stream(self) -> tuple[BytesIO, str]:
-        """Method to dump model to stream"""
-
     @classmethod
     def model_validate_file(cls, path: Path | str) -> Self:
         return cls.model_validate_stream(BytesIO(Path(path).read_bytes()))
-
-    def model_dump_file(self, path: Path | str) -> None:
-        path = Path(path)
-
-        stream, _ = self.model_dump_stream()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(stream.getvalue())
 
     @classmethod
     @abstractmethod

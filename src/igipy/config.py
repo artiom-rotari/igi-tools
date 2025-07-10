@@ -11,20 +11,28 @@ class GameConfig(BaseModel):
     work_dir: JsonPrettyPath = Path.cwd()
 
     @property
-    def scripts_dir(self) -> Path:
-        return self.work_dir / "scripts"
+    def gconv(self) -> Path:
+        return Path(__file__).parent / "bin" / "gconv.exe"
 
     @property
-    def decoded_dir(self) -> Path:
+    def build_dir(self) -> Path:
+        return self.work_dir / "build"
+
+    @property
+    def decoded_dir(self):
         return self.work_dir / "decoded"
 
     @property
-    def encoded_dir(self) -> Path:
-        return self.work_dir / "encoded"
+    def res_decoded_dir(self) -> Path:
+        return self.work_dir / "res_decoded"
 
     @property
-    def gconv_path(self) -> Path:
-        return Path(__file__).parent / "bin" / "gconv.exe"
+    def res_extract_dir(self) -> Path:
+        return self.work_dir / "res_extract"
+
+    @property
+    def scripts_dir(self) -> Path:
+        return self.work_dir / "scripts"
 
 
 class Config(BaseModel):

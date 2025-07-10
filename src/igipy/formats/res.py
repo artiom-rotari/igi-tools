@@ -1,8 +1,6 @@
-import json
 import subprocess
 from io import BytesIO
 from typing import ClassVar, Literal, Self
-from zipfile import ZipFile
 
 import typer
 from pydantic import Field
@@ -78,46 +76,20 @@ class RES(ilff.ILFF):
             content_paths=content_paths,
         )
 
-    def model_dump_stream(self) -> tuple[BytesIO, str]:
-        stream = BytesIO()
-        types = {chunk_b.header.fourcc for _, chunk_b in self.content_pairs}
-
-        if types == {b"BODY"}:
-            with ZipFile(stream, "w") as zip_stream:
-                for chunk_a, chunk_b in self.content_pairs:
-                    zip_stream.writestr(chunk_a.get_cleaned_content().removeprefix("LOCAL:"), chunk_b.content)
-
-            return stream, ".zip"
-
-        if types == {b"CSTR"}:
-            content = [
-                {
-                    "key": chunk_a.get_cleaned_content().removeprefix("LOCAL:"),
-                    "value": chunk_b.get_cleaned_content(),
-                }
-                for chunk_a, chunk_b in self.content_pairs
-            ]
-
-            stream.write(json.dumps(content, indent=4).encode())
-
-            return stream, ".json"
-
-        raise ValueError(f"Unknown file container type: {types}")
-
     @classmethod
     def cli_decode_all(cls, config: GameConfig, pattern: str = "**/*.res") -> None:
-        for encoded_path in config.game_dir.glob(pattern):
-            decoded_path = config.decoded_dir / encoded_path.relative_to(config.game_dir)
-            decoded_path.parent.mkdir(parents=True, exist_ok=True)
+        for res_path in config.game_dir.glob(pattern):
+            dst_path = config.res_extract_dir / res_path.relative_to(config.game_dir).with_suffix("")
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
 
-            res_model = cls.model_validate_file(encoded_path)
+            res_model = cls.model_validate_file(res_path)
             qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
             qsc_model.content.statements.append(
                 qsc.ExprStatement(
                     expression=qsc.Call(
                         function="BeginResource",
                         arguments=[
-                            qsc.Literal(value=encoded_path.name),
+                            qsc.Literal(value=res_path.name),
                         ],
                     ),
                 ),
@@ -140,7 +112,8 @@ class RES(ilff.ILFF):
                     continue
 
                 if isinstance(chunk_b, BODYChunk):
-                    content_path = decoded_path.with_suffix("") / chunk_a.get_cleaned_content().removeprefix("LOCAL:")
+                    content_name = chunk_a.get_cleaned_content().removeprefix("LOCAL:")
+                    content_path = dst_path.joinpath(content_name).relative_to(dst_path.parent)
                     content_path.parent.mkdir(parents=True, exist_ok=True)
                     content_path.write_bytes(chunk_b.content)
 
@@ -149,7 +122,7 @@ class RES(ilff.ILFF):
                             expression=qsc.Call(
                                 function="AddResource",
                                 arguments=[
-                                    qsc.Literal(value=content_path.absolute().as_posix()),
+                                    qsc.Literal(value=content_path.as_posix()),
                                     qsc.Literal(value=chunk_a.get_cleaned_content()),
                                     qsc.Literal(value=chunk_b.header.alignment),
                                 ],
@@ -180,25 +153,24 @@ class RES(ilff.ILFF):
                 ),
             )
 
-            decoded_path.with_suffix(".rsc").write_bytes(qsc_model.model_dump_stream()[0].getvalue())
+            rsc_path = dst_path.with_suffix(".rsc")
+            rsc_path.write_bytes(qsc_model.model_dump_stream()[0].getvalue())
 
-            typer.secho(f'Decoded: "{encoded_path.as_posix()}"', fg=typer.colors.GREEN)
-            typer.secho(f'To: "{decoded_path.as_posix()}"', fg=typer.colors.YELLOW)
+            typer.secho(f'Decoded: "{res_path.as_posix()}"', fg=typer.colors.GREEN)
+            typer.secho(f'To: "{rsc_path.as_posix()}"', fg=typer.colors.YELLOW)
 
     @classmethod
-    def cli_encode_all(cls, config: GameConfig, pattern: str = "**/*.rsc", dry: bool = False) -> None:
-        for decoded_path in config.decoded_dir.glob(pattern):
-            encoded_path = config.encoded_dir / decoded_path.relative_to(config.decoded_dir)
-            encoded_path.parent.mkdir(parents=True, exist_ok=True)
+    def cli_encode_all(cls, config: GameConfig, pattern: str = "**/*.rsc") -> None:
+        for rsc_path in config.res_extract_dir.glob(pattern):
+            subprocess.run(
+                [config.gconv.absolute().as_posix(), rsc_path.name, "-Verbosity=5"],
+                cwd=rsc_path.parent.absolute().as_posix(),
+                check=False,
+            )
 
-            cmd = [
-                config.gconv_path.absolute().as_posix(),
-                decoded_path.absolute().as_posix(),
-                "-Verbosity=5",
-            ]
-            cwd = decoded_path.parent.absolute().as_posix()
+            res_src_path = rsc_path.with_suffix(".res")
+            res_dst_path = config.build_dir / rsc_path.relative_to(config.res_extract_dir).with_suffix(".res")
 
-            typer.secho(f'Going to execute: cd "{cwd}" && {" ".join(cmd)}', fg=typer.colors.GREEN)
-
-            if not dry:
-                result = subprocess.run(cmd, cwd=cwd, check=False)
+            if res_src_path.is_file(follow_symlinks=False):
+                res_dst_path.parent.mkdir(parents=True, exist_ok=True)
+                res_src_path.replace(res_dst_path)
