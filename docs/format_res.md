@@ -1,3 +1,93 @@
+# RES Files
+
+**RES** files are archive files that can contain other files or text. Some RES files store game assets (like textures), while others hold translated text for localization.
+
+---
+
+## Creating a RES file with files
+
+Here’s an example `.qsc` script that creates a `.res` archive with texture files:
+
+```qsc
+BeginResource("common/textures/textures.res");
+AddResource("common/textures/shadow1.tex", "LOCAL:common/textures/shadow1.tex", 4);
+AddResource("common/textures/hole_blood1.tex", "LOCAL:common/textures/hole_blood1.tex", 4);
+AddResource("common/textures/hole_blood2.tex", "LOCAL:common/textures/hole_blood2.tex", 4);
+AddResource("common/textures/hole_blood3.tex", "LOCAL:common/textures/hole_blood3.tex", 4);
+AddResource("common/textures/hole_blood4.tex", "LOCAL:common/textures/hole_blood4.tex", 4);
+AddResource("common/textures/hole_plexi1.tex", "LOCAL:common/textures/hole_plexi1.tex", 4);
+AddResource("common/textures/hole_concrete1.tex", "LOCAL:common/textures/hole_concrete1.tex", 4);
+AddResource("common/textures/bullethole_concrete.tex", "LOCAL:common/textures/bullethole_concrete.tex", 4);
+AddResource("common/textures/bullethole_metal.tex", "LOCAL:common/textures/bullethole_metal.tex", 4);
+AddResource("common/textures/bullethole_wood.tex", "LOCAL:common/textures/bullethole_wood.tex", 4);
+AddResource("common/textures/dent_concrete.tex", "LOCAL:common/textures/dent_concrete.tex", 4);
+AddResource("common/textures/dent_metal.tex", "LOCAL:common/textures/dent_metal.tex", 4);
+AddResource("common/textures/burn1.tex", "LOCAL:common/textures/burn1.tex", 4);
+AddResource("common/textures/snow.tex", "LOCAL:common/textures/snow.tex", 4);
+EndResource();
+```
+
+**Commands:**
+
+* `BeginResource("<path>")` — starts creating a resource archive at the specified path.
+* `AddResource(<source>, <target>, <alignment>)` — adds a file to the archive.
+
+  * *source*: file path on disk
+  * *target*: path inside the archive
+  * *alignment*: adds padding bytes for optimized reading.
+* `EndResource()` — saves the resource.
+
+---
+
+## Creating a RES file with text
+
+Here’s an example `.qsc` script that adds translated text:
+
+```qsc
+BeginResource("build/language/french/missions.res");
+AddStringResource("LOCAL:french/Mission 1 Name", "Insertion");
+AddStringResource("LOCAL:french/Mission 2 Name", "S\xE9curiser un couloir a\xE9rien");
+...
+AddStringResource("LOCAL:french/Mission 14 Desc", "Tuer Ekk et trouver la bombe");
+AddDirectoryResource("LOCAL:french");
+EndResource();
+```
+
+**Additional commands:**
+
+* `AddStringResource(<key>, <value>)` — adds a text entry for localization.
+
+  * *key*: unique key for the string
+  * *value*: string content.
+* `AddDirectoryResource(<path>)` — adds a directory listing chunk. (Purpose may vary.)
+
+---
+
+## Encoding Notes
+
+**Important:** `gconv.exe` only works with UTF-8 files. Non-ASCII characters must be escaped.
+Example:
+
+Original:
+`Récupérer l'équipement de \"Jones"` encoded with `latin1`
+
+1. Escape backslashes:
+   `Récupérer l'équipement de \\"Jones"`
+
+2. Escape quotes:
+   `Récupérer l'équipement de \\\"Jones\"`
+
+3. Replace non-ASCII characters with `\x` codes:
+   `R\xE9cup\xE9rer l'\xE9quipement de \\\"Jones\"`
+
+Use this final version in your `.qsc` script.
+
+
+## `igipy` commands
+
+...
+
+## Resources Dump
 
 | Resource                                             | Alignment     | Size           | Files       | Type |
 |------------------------------------------------------|---------------|----------------|-------------|------|

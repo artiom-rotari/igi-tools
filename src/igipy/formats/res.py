@@ -35,7 +35,7 @@ class CSTRChunk(ilff.RawChunk):
         content = content.replace("\\", r"\\")
         content = content.replace(r'"', r"\"")
         content = "".join(character if ord(character) < 128 else f"\\x{ord(character):02X}" for character in content)
-        return content
+        return content  # noqa: RET504
 
 
 class PATHChunk(ilff.RawChunk):
@@ -166,7 +166,7 @@ class RES(ilff.ILFF):
 
     # noinspection DuplicatedCode
     @classmethod
-    def cli_encode_all(cls, config: GameConfig, **kwargs) -> None:
+    def cli_encode_all(cls, config: GameConfig, **kwargs: dict) -> None:  # noqa: ARG003
         encode_qsc_path = cls.get_encode_qsc_path(config)
 
         if not encode_qsc_path.is_file(follow_symlinks=False):

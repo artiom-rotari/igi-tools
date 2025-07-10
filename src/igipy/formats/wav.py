@@ -102,7 +102,7 @@ class WAV(base.FileModel):
 
     # noinspection DuplicatedCode
     @classmethod
-    def cli_encode_all(cls, config: GameConfig, **kwargs) -> None:
+    def cli_encode_all(cls, config: GameConfig, **kwargs: dict) -> None:  # noqa: ARG003
         encode_qsc_path = cls.get_encode_qsc_path(config)
 
         if not encode_qsc_path.is_file(follow_symlinks=False):
