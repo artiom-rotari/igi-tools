@@ -1,3 +1,5 @@
+import subprocess
+
 import typer
 
 from igipy import formats
@@ -10,6 +12,16 @@ def igi1_callback(ctx: typer.Context) -> None:
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
         raise typer.Exit(0)
+
+
+@igi1_app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+    short_help="Run gconv.exe",
+)
+def gconv(ctx: typer.Context):
+    executable = ctx.obj.igi1.gconv.absolute().as_posix()
+    arguments = ctx.args or ["-help"]
+    subprocess.run([executable] + arguments, check=True)
 
 
 @igi1_app.command(short_help="Extract all .res files found in `{{game_dir}}`")

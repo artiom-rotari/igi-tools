@@ -32,18 +32,6 @@ def printable(src: Path, min_length: int = 5, charset: str = string.printable) -
 
 
 @dev_app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-    short_help="Run gconv.exe",
-    hidden=True,
-)
-def gconv(ctx: typer.Context):
-    executable = Path(__file__).parent.parent.joinpath("bin/gconv.exe").as_posix()
-    arguments = ctx.args or ["--help"]
-    command = [executable] + arguments
-    subprocess.run(command, check=True)
-
-
-@dev_app.command(
     name="extensions",
     short_help="Group files in source_dir and unpack_dir by extension and show counts",
     hidden=True,
