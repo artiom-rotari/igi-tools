@@ -1,19 +1,40 @@
+from abc import ABC, abstractmethod
 from io import BytesIO
+from pathlib import Path
 from struct import Struct
 from typing import ClassVar, Self
 
 from pydantic import BaseModel
 
 
-class FileModel(BaseModel):
+class FileModel(BaseModel, ABC):
     @classmethod
+    @abstractmethod
     def model_validate_stream(cls, stream: BytesIO) -> Self:
-        """Method to parse the file from a binary stream"""
-        raise NotImplementedError
+        """Method to load model from stream"""
 
+    @abstractmethod
     def model_dump_stream(self) -> tuple[BytesIO, str]:
-        """Method to dump the file to a binary stream"""
-        raise NotImplementedError
+        """Method to dump model to stream"""
+
+    @classmethod
+    def model_validate_file(cls, path: Path | str) -> Self:
+        return cls.model_validate_stream(BytesIO(Path(path).read_bytes()))
+
+    def model_dump_file(self, path: Path | str) -> None:
+        path = Path(path)
+
+        stream, _ = self.model_dump_stream()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(stream.getvalue())
+
+    @classmethod
+    @abstractmethod
+    def cli_decode_all(cls, config: BaseModel, pattern: str) -> None: ...
+
+    @classmethod
+    @abstractmethod
+    def cli_encode_all(cls, config: BaseModel, pattern: str) -> None: ...
 
 
 class FileIgnored(NotImplementedError):  # noqa: N818

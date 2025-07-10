@@ -1,11 +1,14 @@
 import json
+import subprocess
 from io import BytesIO
 from typing import ClassVar, Literal, Self
 from zipfile import ZipFile
 
+import typer
 from pydantic import Field
 
-from igipy.formats import ilff
+from igipy.config import GameConfig
+from igipy.formats import ilff, qsc
 
 
 class NAMEChunk(ilff.RawChunk):
@@ -29,7 +32,11 @@ class CSTRChunk(ilff.RawChunk):
         ilff.model_validate_header(header, fourcc=b"CSTR")
 
     def get_cleaned_content(self) -> str:
-        return self.content.removesuffix(b"\x00").decode("latin1")
+        content = self.content.removesuffix(b"\x00").decode("latin1")
+        content = content.replace("\\", r"\\")
+        content = content.replace(r'"', r"\"")
+        content = "".join(character if ord(character) < 128 else f"\\x{ord(character):02X}" for character in content)
+        return content
 
 
 class PATHChunk(ilff.RawChunk):
@@ -96,3 +103,102 @@ class RES(ilff.ILFF):
             return stream, ".json"
 
         raise ValueError(f"Unknown file container type: {types}")
+
+    @classmethod
+    def cli_decode_all(cls, config: GameConfig, pattern: str = "**/*.res") -> None:
+        for encoded_path in config.game_dir.glob(pattern):
+            decoded_path = config.decoded_dir / encoded_path.relative_to(config.game_dir)
+            decoded_path.parent.mkdir(parents=True, exist_ok=True)
+
+            res_model = cls.model_validate_file(encoded_path)
+            qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
+            qsc_model.content.statements.append(
+                qsc.ExprStatement(
+                    expression=qsc.Call(
+                        function="BeginResource",
+                        arguments=[
+                            qsc.Literal(value=encoded_path.name),
+                        ],
+                    ),
+                ),
+            )
+
+            for chunk_a, chunk_b in res_model.content_pairs:
+                if isinstance(chunk_b, CSTRChunk):
+                    qsc_model.content.statements.append(
+                        qsc.ExprStatement(
+                            expression=qsc.Call(
+                                function="AddStringResource",
+                                arguments=[
+                                    qsc.Literal(value=chunk_a.get_cleaned_content()),
+                                    qsc.Literal(value=chunk_b.get_cleaned_content()),
+                                ],
+                            ),
+                        ),
+                    )
+
+                    continue
+
+                if isinstance(chunk_b, BODYChunk):
+                    content_path = decoded_path.with_suffix("") / chunk_a.get_cleaned_content().removeprefix("LOCAL:")
+                    content_path.parent.mkdir(parents=True, exist_ok=True)
+                    content_path.write_bytes(chunk_b.content)
+
+                    qsc_model.content.statements.append(
+                        qsc.ExprStatement(
+                            expression=qsc.Call(
+                                function="AddResource",
+                                arguments=[
+                                    qsc.Literal(value=content_path.absolute().as_posix()),
+                                    qsc.Literal(value=chunk_a.get_cleaned_content()),
+                                    qsc.Literal(value=chunk_b.header.alignment),
+                                ],
+                            ),
+                        ),
+                    )
+
+                    continue
+
+            if res_model.content_paths:
+                qsc_model.content.statements.append(
+                    qsc.ExprStatement(
+                        expression=qsc.Call(
+                            function="AddDirectoryResource",
+                            arguments=[
+                                qsc.Literal(value=res_model.content_paths[0].get_cleaned_content()),
+                            ],
+                        ),
+                    )
+                )
+
+            qsc_model.content.statements.append(
+                qsc.ExprStatement(
+                    expression=qsc.Call(
+                        function="EndResource",
+                        arguments=[],
+                    ),
+                ),
+            )
+
+            decoded_path.with_suffix(".rsc").write_bytes(qsc_model.model_dump_stream()[0].getvalue())
+
+            typer.secho(f'Decoded: "{encoded_path.as_posix()}"', fg=typer.colors.GREEN)
+            typer.secho(f'To: "{decoded_path.as_posix()}"', fg=typer.colors.YELLOW)
+
+    @classmethod
+    def cli_encode_all(cls, config: GameConfig, pattern: str = "**/*.rsc", dry: bool = False) -> None:
+        for decoded_path in config.decoded_dir.glob(pattern):
+            encoded_path = config.encoded_dir / decoded_path.relative_to(config.decoded_dir)
+            encoded_path.parent.mkdir(parents=True, exist_ok=True)
+
+            cmd = [
+                config.gconv_path.absolute().as_posix(),
+                decoded_path.absolute().as_posix(),
+                "-Verbosity=5",
+            ]
+            cwd = decoded_path.parent.absolute().as_posix()
+
+            typer.secho(f'Going to execute: cd "{cwd}" && {" ".join(cmd)}', fg=typer.colors.GREEN)
+
+            if not dry:
+                result = subprocess.run(cmd, cwd=cwd, check=False)

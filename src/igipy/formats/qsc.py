@@ -2,6 +2,7 @@ from abc import ABC
 from enum import Enum
 from functools import singledispatchmethod
 from io import BytesIO
+from typing import Self
 
 from pydantic import BaseModel
 
@@ -168,16 +169,19 @@ class QSC(FileModel):
 
     def model_dump_stream(self) -> tuple[BytesIO, str]:
         stream = BytesIO()
-        stream_text = self.to_str(self.content, indent=0)
-        stream_text = f"{stream_text.rstrip('\n')}\n"
-        stream.write(stream_text.encode("utf-8"))
+        stream.write(self.to_str().encode("utf-8"))
         return stream, ".qsc"
 
+    def to_str(self) -> str:
+        result = self.node_to_str(self.content, indent=0)
+        result = f"{result.rstrip('\n')}\n"
+        return result
+
     @singledispatchmethod
-    def to_str(self, node: AST, indent: int = 0, parent_precedence: int = 0) -> str:
+    def node_to_str(self, node: AST, indent: int = 0, parent_precedence: int = 0) -> str:
         raise NotImplementedError(f"Not implemented for {type(node)}")
 
-    @to_str.register
+    @node_to_str.register
     def _(self, node: Literal, indent: int = 0, parent_precedence: int = 0) -> str:  # noqa: ARG002
         if isinstance(node.value, str):
             return f'"{node.value}"'
@@ -187,39 +191,39 @@ class QSC(FileModel):
 
         return str(node.value)
 
-    @to_str.register
+    @node_to_str.register
     def _(self, node: Variable, indent: int = 0, parent_precedence: int = 0) -> str:  # noqa: ARG002
         return node.name
 
-    @to_str.register
+    @node_to_str.register
     def _(self, node: UnaryOp, indent: int = 0, parent_precedence: int = 0) -> str:
-        operand_string = self.to_str(node.operand, indent + 1, parent_precedence=node.operator.precedence)
+        operand_string = self.node_to_str(node.operand, indent + 1, parent_precedence=node.operator.precedence)
 
         string = f"{node.operator.value}{operand_string}"
         string = f"({string})" if node.operator.precedence < parent_precedence else string
 
         return string  # noqa: RET504
 
-    @to_str.register
+    @node_to_str.register
     def _(self, node: BinaryOp, indent: int = 0, parent_precedence: int = 0) -> str:
-        left_string = self.to_str(node.left, indent + 1, parent_precedence=node.operator.precedence)
+        left_string = self.node_to_str(node.left, indent + 1, parent_precedence=node.operator.precedence)
 
         right_precedence = node.operator.precedence + (1 if node.operator.value != "=" else 0)
-        right_string = self.to_str(node.right, indent + 1, parent_precedence=right_precedence)
+        right_string = self.node_to_str(node.right, indent + 1, parent_precedence=right_precedence)
 
         string = f"{left_string} {node.operator.value} {right_string}"
         string = f"({string})" if node.operator.precedence < parent_precedence else string
 
         return string  # noqa: RET504
 
-    @to_str.register
+    @node_to_str.register
     def _(self, node: Call, indent: int = 0, parent_precedence: int = 0) -> str:  # noqa: ARG002
         function_token = node.function
         token_length = len(function_token)
         token_list = []
 
         for argument in node.arguments:
-            argument_token = self.to_str(argument, indent + 1)
+            argument_token = self.node_to_str(argument, indent + 1)
 
             if isinstance(argument, Call):
                 argument_token_indent = self.indent * (indent + 1)
@@ -236,21 +240,21 @@ class QSC(FileModel):
         arguments_token = ", ".join(token_list)
         return f"{function_token}({arguments_token})"
 
-    @to_str.register
+    @node_to_str.register
     def _(self, node: ExprStatement, indent: int = 0, parent_precedence: int = 0) -> str:  # noqa: ARG002
-        return f"{self.indent * indent}{self.to_str(node.expression, indent)};"
+        return f"{self.indent * indent}{self.node_to_str(node.expression, indent)};"
 
-    @to_str.register
+    @node_to_str.register
     def _(self, node: BlockStatement, indent: int = 0, parent_precedence: int = 0) -> str:  # noqa: ARG002
-        lines = [self.to_str(stmt, indent) for stmt in node.statements]
+        lines = [self.node_to_str(stmt, indent) for stmt in node.statements]
         return "\n".join(lines)
 
-    @to_str.register
+    @node_to_str.register
     def _(self, node: IfStatement, indent: int = 0, parent_precedence: int = 0) -> str:  # noqa: ARG002
         lines = [
-            f"{self.indent * indent}if({self.to_str(node.condition, indent + 1)})",
+            f"{self.indent * indent}if({self.node_to_str(node.condition, indent + 1)})",
             f"{self.indent * indent}{{",
-            *self.to_str(node.then_block, indent + 1).splitlines(),
+            *self.node_to_str(node.then_block, indent + 1).splitlines(),
             f"{self.indent * indent}}}",
         ]
 
@@ -259,9 +263,21 @@ class QSC(FileModel):
                 [
                     f"{self.indent * indent}else",
                     f"{self.indent * indent}{{",
-                    *self.to_str(node.else_block, indent + 1).splitlines(),
+                    *self.node_to_str(node.else_block, indent + 1).splitlines(),
                     f"{self.indent * indent}}}",
                 ]
             )
 
         return "\n".join(lines)
+
+    @classmethod
+    def model_validate_stream(cls, stream: BytesIO) -> Self:
+        raise NotImplementedError
+
+    @classmethod
+    def cli_decode_all(cls, config: BaseModel, pattern: str) -> None:
+        raise NotImplementedError
+
+    @classmethod
+    def cli_encode_all(cls, config: BaseModel, pattern: str) -> None:
+        raise NotImplementedError

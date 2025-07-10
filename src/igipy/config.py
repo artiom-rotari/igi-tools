@@ -1,22 +1,44 @@
 from pathlib import Path
-from typing import ClassVar, Self
+from typing import Annotated, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PlainSerializer
 
-from igipy.managers import IGI1Manager
+JsonPrettyPath = Annotated[Path, PlainSerializer(lambda value: value.as_posix(), return_type=str, when_used="json")]
+
+
+class GameConfig(BaseModel):
+    game_dir: JsonPrettyPath = Path("C:/Games/ProjectIGI")
+    work_dir: JsonPrettyPath = Path.cwd()
+
+    @property
+    def scripts_dir(self) -> Path:
+        return self.work_dir / "scripts"
+
+    @property
+    def decoded_dir(self) -> Path:
+        return self.work_dir / "decoded"
+
+    @property
+    def encoded_dir(self) -> Path:
+        return self.work_dir / "encoded"
+
+    @property
+    def gconv_path(self) -> Path:
+        return Path(__file__).parent / "bin" / "gconv.exe"
 
 
 class Config(BaseModel):
-    path: ClassVar[Path] = Path("igipy.json")
-    igi1: IGI1Manager = Field(default_factory=IGI1Manager)
+    igi1: GameConfig = Field(default_factory=GameConfig)
 
     @classmethod
-    def model_validate_file(cls) -> Self:
-        if not cls.path.exists():
-            cls.path.parent.mkdir(parents=True, exist_ok=True)
-            cls.path.write_text(cls.model_construct().model_dump_json(indent=2))
+    def model_validate_file(cls, path: Path = None) -> Self:
+        path = path or Path("igipy.json")
 
-        if not cls.path.is_file(follow_symlinks=False):
-            raise FileNotFoundError(f"{cls.path.as_posix()} isn't a file")
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(cls.model_construct().model_dump_json(indent=2))
 
-        return cls.model_validate_json(cls.path.read_text())
+        if not path.is_file(follow_symlinks=False):
+            raise FileNotFoundError(f"{path.as_posix()} isn't a file")
+
+        return cls.model_validate_json(path.read_text())
