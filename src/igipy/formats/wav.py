@@ -1,16 +1,33 @@
+import subprocess
 import wave
 from io import BytesIO
+from itertools import chain
+from pathlib import Path
 from struct import Struct
 from typing import ClassVar, Literal, Self
 
+import typer
 from pydantic import NonNegativeInt
 
-from . import base
-from .utils import adpcm
+from igipy.config import GameConfig
+from igipy.formats import base, qsc
+from igipy.formats.utils import adpcm
+
+
+class WAVHeader(base.StructModel):
+    struct: ClassVar[Struct] = Struct("4s4H2I")
+
+    signature: Literal[b"ILSF"]
+    sound_pack: Literal[0, 1, 2, 3]
+    sample_width: Literal[16]
+    channels: Literal[1, 2]
+    unknown: NonNegativeInt
+    framerate: Literal[11025, 22050, 44100]
+    sample_count: NonNegativeInt
 
 
 class WAV(base.FileModel):
-    header: "WAVHeader"
+    header: WAVHeader
     content: bytes
 
     @classmethod
@@ -40,14 +57,63 @@ class WAV(base.FileModel):
 
         return stream, ".wav"
 
+    @classmethod
+    def cli_decode_all(cls, config: GameConfig, pattern: str = "**/*.wav") -> None:
+        qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
 
-class WAVHeader(base.StructModel):
-    struct: ClassVar[Struct] = Struct("4s4H2I")
+        for src_path, src_dir, decoded_dir, encoded_dir in chain(
+            (
+                (src_path, config.game_dir, config.decoded_dir, config.build_dir)
+                for src_path in config.game_dir.glob(pattern)
+                if src_path.is_file(follow_symlinks=False)
+            ),
+            (
+                (src_path, config.extracted_dir, config.decoded_dir, config.extracted_dir)
+                for src_path in config.extracted_dir.glob(pattern)
+                if src_path.is_file(follow_symlinks=False)
+            ),
+        ):
+            decoded_path = decoded_dir / src_path.relative_to(src_dir)
+            encoded_path = encoded_dir / src_path.relative_to(src_dir)
 
-    signature: Literal[b"ILSF"]
-    sound_pack: Literal[0, 1, 2, 3]
-    sample_width: Literal[16]
-    channels: Literal[1, 2]
-    unknown: NonNegativeInt
-    framerate: Literal[11025, 22050, 44100]
-    sample_count: NonNegativeInt
+            wav_model = cls.model_validate_file(src_path)
+
+            decoded_path.parent.mkdir(parents=True, exist_ok=True)
+            decoded_path.write_bytes(wav_model.model_dump_stream()[0].getvalue())
+            typer.secho(f"Created: {decoded_path.as_posix()}", fg=typer.colors.GREEN)
+
+            qsc_model.content.statements.append(
+                qsc.ExprStatement(
+                    expression=qsc.Call(
+                        function="ConvertSoundFile",
+                        arguments=[
+                            qsc.Literal(value=decoded_path.relative_to(config.work_dir).as_posix()),
+                            qsc.Literal(value=encoded_path.relative_to(config.work_dir).as_posix()),
+                            qsc.Literal(value=wav_model.header.sound_pack),
+                        ],
+                    )
+                )
+            )
+
+        encode_qsc_path = cls.get_encode_qsc_path(config)
+        encode_qsc_path.parent.mkdir(parents=True, exist_ok=True)
+        encode_qsc_path.write_bytes(qsc_model.model_dump_stream()[0].getvalue())
+        typer.secho(f"QSC script saved: {encode_qsc_path.as_posix()}", fg=typer.colors.YELLOW)
+
+    # noinspection DuplicatedCode
+    @classmethod
+    def cli_encode_all(cls, config: GameConfig, **kwargs) -> None:
+        encode_qsc_path = cls.get_encode_qsc_path(config)
+
+        if not encode_qsc_path.is_file(follow_symlinks=False):
+            typer.secho(f"File not found: {encode_qsc_path.as_posix()}", fg=typer.colors.RED)
+
+        subprocess.run(
+            [config.gconv.absolute().as_posix(), encode_qsc_path.relative_to(config.work_dir).as_posix()],
+            cwd=config.work_dir.absolute().as_posix(),
+            check=False,
+        )
+
+    @classmethod
+    def get_encode_qsc_path(cls, config: GameConfig) -> Path:
+        return config.scripts_dir / "encode-all-wav.qsc"
