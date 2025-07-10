@@ -6,6 +6,8 @@ from typing import ClassVar, Self
 
 from pydantic import BaseModel
 
+from igipy.config import GameConfig
+
 
 class FileModel(BaseModel, ABC):
     @classmethod
@@ -19,11 +21,11 @@ class FileModel(BaseModel, ABC):
 
     @classmethod
     @abstractmethod
-    def cli_decode_all(cls, config: BaseModel, pattern: str) -> None: ...
+    def cli_decode_all(cls, config: GameConfig, pattern: str) -> None: ...
 
     @classmethod
     @abstractmethod
-    def cli_encode_all(cls, config: BaseModel, pattern: str) -> None: ...
+    def cli_encode_all(cls, config: GameConfig, **kwargs) -> None: ...
 
 
 class FileIgnored(NotImplementedError):  # noqa: N818

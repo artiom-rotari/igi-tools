@@ -1,5 +1,6 @@
 import subprocess
 from io import BytesIO
+from pathlib import Path
 from typing import ClassVar, Literal, Self
 
 import typer
@@ -78,18 +79,22 @@ class RES(ilff.ILFF):
 
     @classmethod
     def cli_decode_all(cls, config: GameConfig, pattern: str = "**/*.res") -> None:
-        for res_path in config.game_dir.glob(pattern):
-            dst_path = config.res_extract_dir / res_path.relative_to(config.game_dir).with_suffix("")
-            dst_path.parent.mkdir(parents=True, exist_ok=True)
+        qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
 
+        for res_path in config.game_dir.glob(pattern):
+            dir_path = config.extracted_dir / res_path.relative_to(config.game_dir)
+            dir_path.mkdir(parents=True, exist_ok=True)
+            dst_path = config.build_dir / res_path.relative_to(config.game_dir)
+
+            typer.secho(f"Extracting: {res_path.as_posix()}", fg=typer.colors.YELLOW)
             res_model = cls.model_validate_file(res_path)
-            qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
+
             qsc_model.content.statements.append(
                 qsc.ExprStatement(
                     expression=qsc.Call(
                         function="BeginResource",
                         arguments=[
-                            qsc.Literal(value=res_path.name),
+                            qsc.Literal(value=dst_path.relative_to(config.work_dir).as_posix()),
                         ],
                     ),
                 ),
@@ -112,17 +117,18 @@ class RES(ilff.ILFF):
                     continue
 
                 if isinstance(chunk_b, BODYChunk):
-                    content_name = chunk_a.get_cleaned_content().removeprefix("LOCAL:")
-                    content_path = dst_path.joinpath(content_name).relative_to(dst_path.parent)
+                    content_path = dir_path.joinpath(chunk_a.get_cleaned_content().removeprefix("LOCAL:"))
                     content_path.parent.mkdir(parents=True, exist_ok=True)
                     content_path.write_bytes(chunk_b.content)
+
+                    typer.secho(f"Extracted: {content_path.as_posix()}", fg=typer.colors.GREEN)
 
                     qsc_model.content.statements.append(
                         qsc.ExprStatement(
                             expression=qsc.Call(
                                 function="AddResource",
                                 arguments=[
-                                    qsc.Literal(value=content_path.as_posix()),
+                                    qsc.Literal(value=content_path.relative_to(config.work_dir).as_posix()),
                                     qsc.Literal(value=chunk_a.get_cleaned_content()),
                                     qsc.Literal(value=chunk_b.header.alignment),
                                 ],
@@ -153,24 +159,25 @@ class RES(ilff.ILFF):
                 ),
             )
 
-            rsc_path = dst_path.with_suffix(".rsc")
-            rsc_path.write_bytes(qsc_model.model_dump_stream()[0].getvalue())
+        encode_qsc_path = cls.get_encode_qsc_path(config)
+        encode_qsc_path.parent.mkdir(parents=True, exist_ok=True)
+        encode_qsc_path.write_bytes(qsc_model.model_dump_stream()[0].getvalue())
+        typer.secho(f"QSC script saved: {encode_qsc_path.as_posix()}", fg=typer.colors.YELLOW)
 
-            typer.secho(f'Decoded: "{res_path.as_posix()}"', fg=typer.colors.GREEN)
-            typer.secho(f'To: "{rsc_path.as_posix()}"', fg=typer.colors.YELLOW)
+    # noinspection DuplicatedCode
+    @classmethod
+    def cli_encode_all(cls, config: GameConfig, **kwargs) -> None:
+        encode_qsc_path = cls.get_encode_qsc_path(config)
+
+        if not encode_qsc_path.is_file(follow_symlinks=False):
+            typer.secho(f"File not found: {encode_qsc_path.as_posix()}", fg=typer.colors.RED)
+
+        subprocess.run(
+            [config.gconv.absolute().as_posix(), encode_qsc_path.relative_to(config.work_dir).as_posix()],
+            cwd=config.work_dir.absolute().as_posix(),
+            check=False,
+        )
 
     @classmethod
-    def cli_encode_all(cls, config: GameConfig, pattern: str = "**/*.rsc") -> None:
-        for rsc_path in config.res_extract_dir.glob(pattern):
-            subprocess.run(
-                [config.gconv.absolute().as_posix(), rsc_path.name, "-Verbosity=5"],
-                cwd=rsc_path.parent.absolute().as_posix(),
-                check=False,
-            )
-
-            res_src_path = rsc_path.with_suffix(".res")
-            res_dst_path = config.build_dir / rsc_path.relative_to(config.res_extract_dir).with_suffix(".res")
-
-            if res_src_path.is_file(follow_symlinks=False):
-                res_dst_path.parent.mkdir(parents=True, exist_ok=True)
-                res_src_path.replace(res_dst_path)
+    def get_encode_qsc_path(cls, config: GameConfig) -> Path:
+        return config.scripts_dir / "encode-all-res.qsc"

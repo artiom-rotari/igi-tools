@@ -15,6 +15,10 @@ class GameConfig(BaseModel):
         return Path(__file__).parent / "bin" / "gconv.exe"
 
     @property
+    def scripts_dir(self) -> Path:
+        return self.work_dir / "scripts"
+
+    @property
     def build_dir(self) -> Path:
         return self.work_dir / "build"
 
@@ -23,16 +27,8 @@ class GameConfig(BaseModel):
         return self.work_dir / "decoded"
 
     @property
-    def res_decoded_dir(self) -> Path:
-        return self.work_dir / "res_decoded"
-
-    @property
-    def res_extract_dir(self) -> Path:
-        return self.work_dir / "res_extract"
-
-    @property
-    def scripts_dir(self) -> Path:
-        return self.work_dir / "scripts"
+    def extracted_dir(self):
+        return self.work_dir / "extracted"
 
 
 class Config(BaseModel):
