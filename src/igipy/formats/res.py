@@ -9,6 +9,8 @@ from pydantic import Field
 from igipy.config import GameConfig
 from igipy.formats import ilff, qsc
 
+ENCODING = "latin1"
+
 
 class NAMEChunk(ilff.RawChunk):
     @classmethod
@@ -16,7 +18,7 @@ class NAMEChunk(ilff.RawChunk):
         ilff.model_validate_header(header, fourcc=b"NAME")
 
     def get_cleaned_content(self) -> str:
-        return self.content.removesuffix(b"\x00").decode("latin1")
+        return self.content.removesuffix(b"\x00").decode(ENCODING)
 
 
 class BODYChunk(ilff.RawChunk):
@@ -31,7 +33,7 @@ class CSTRChunk(ilff.RawChunk):
         ilff.model_validate_header(header, fourcc=b"CSTR")
 
     def get_cleaned_content(self) -> str:
-        content = self.content.removesuffix(b"\x00").decode("latin1")
+        content = self.content.removesuffix(b"\x00").decode(ENCODING)
         content = content.replace("\\", r"\\")
         content = content.replace(r'"', r"\"")
         content = "".join(character if ord(character) < 128 else f"\\x{ord(character):02X}" for character in content)
@@ -44,7 +46,7 @@ class PATHChunk(ilff.RawChunk):
         ilff.model_validate_header(header, fourcc=b"PATH")
 
     def get_cleaned_content(self) -> str:
-        return self.content.removesuffix(b"\x00").decode("latin1")
+        return self.content.removesuffix(b"\x00").decode(ENCODING)
 
 
 class RES(ilff.ILFF):
@@ -56,7 +58,7 @@ class RES(ilff.ILFF):
     }
 
     content_type: Literal[b"IRES"] = Field(description="Content type")
-    content_pairs: list[tuple[NAMEChunk, BODYChunk]] | list[tuple[NAMEChunk, CSTRChunk]]
+    content_pairs: list[tuple[NAMEChunk, BODYChunk | CSTRChunk]]
     content_paths: tuple[NAMEChunk, PATHChunk] | None = None
 
     @classmethod
@@ -79,7 +81,7 @@ class RES(ilff.ILFF):
 
     @classmethod
     def cli_decode_all(cls, config: GameConfig, pattern: str = "**/*.res") -> None:
-        qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
+        encode_qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
 
         for res_path in config.game_dir.glob(pattern):
             dir_path = config.extracted_dir / res_path.relative_to(config.game_dir)
@@ -89,7 +91,7 @@ class RES(ilff.ILFF):
             typer.secho(f"Extracting: {res_path.as_posix()}", fg=typer.colors.YELLOW)
             res_model = cls.model_validate_file(res_path)
 
-            qsc_model.content.statements.append(
+            encode_qsc_model.content.statements.append(
                 qsc.ExprStatement(
                     expression=qsc.Call(
                         function="BeginResource",
@@ -102,7 +104,7 @@ class RES(ilff.ILFF):
 
             for chunk_a, chunk_b in res_model.content_pairs:
                 if isinstance(chunk_b, CSTRChunk):
-                    qsc_model.content.statements.append(
+                    encode_qsc_model.content.statements.append(
                         qsc.ExprStatement(
                             expression=qsc.Call(
                                 function="AddStringResource",
@@ -123,7 +125,7 @@ class RES(ilff.ILFF):
 
                     typer.secho(f"Extracted: {content_path.as_posix()}", fg=typer.colors.GREEN)
 
-                    qsc_model.content.statements.append(
+                    encode_qsc_model.content.statements.append(
                         qsc.ExprStatement(
                             expression=qsc.Call(
                                 function="AddResource",
@@ -139,7 +141,7 @@ class RES(ilff.ILFF):
                     continue
 
             if res_model.content_paths:
-                qsc_model.content.statements.append(
+                encode_qsc_model.content.statements.append(
                     qsc.ExprStatement(
                         expression=qsc.Call(
                             function="AddDirectoryResource",
@@ -150,7 +152,7 @@ class RES(ilff.ILFF):
                     )
                 )
 
-            qsc_model.content.statements.append(
+            encode_qsc_model.content.statements.append(
                 qsc.ExprStatement(
                     expression=qsc.Call(
                         function="EndResource",
@@ -160,8 +162,7 @@ class RES(ilff.ILFF):
             )
 
         encode_qsc_path = cls.get_encode_qsc_path(config)
-        encode_qsc_path.parent.mkdir(parents=True, exist_ok=True)
-        encode_qsc_path.write_bytes(qsc_model.model_dump_stream()[0].getvalue())
+        encode_qsc_model.to_file(encode_qsc_path)
         typer.secho(f"QSC script saved: {encode_qsc_path.as_posix()}", fg=typer.colors.YELLOW)
 
     # noinspection DuplicatedCode

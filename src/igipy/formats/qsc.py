@@ -2,6 +2,7 @@ from abc import ABC
 from enum import Enum
 from functools import singledispatchmethod
 from io import BytesIO
+from pathlib import Path
 from typing import Self
 
 from pydantic import BaseModel
@@ -167,10 +168,14 @@ class QSC(FileModel):
     def indent(self) -> str:
         return self.indent_char * self.indent_width
 
-    def model_dump_stream(self) -> tuple[BytesIO, str]:
+    def to_stream(self) -> BytesIO:
         stream = BytesIO()
         stream.write(self.to_str().encode("utf-8"))
-        return stream, ".qsc"
+        return stream
+
+    def to_file(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(self.to_stream().getvalue())
 
     def to_str(self) -> str:
         result = self.node_to_str(self.content, indent=0)
@@ -279,5 +284,5 @@ class QSC(FileModel):
         raise NotImplementedError
 
     @classmethod
-    def cli_encode_all(cls, config: BaseModel, pattern: str) -> None:
+    def cli_encode_all(cls, config: BaseModel, **kwargs) -> None:
         raise NotImplementedError

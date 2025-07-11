@@ -45,7 +45,7 @@ class WAV(base.FileModel):
 
         raise ValueError(f"Unsupported sound pack: {self.header.sound_pack}")
 
-    def model_dump_stream(self) -> tuple[BytesIO, str]:
+    def to_wav_stream(self) -> BytesIO:
         stream = BytesIO()
         samples = self.samples
 
@@ -55,11 +55,15 @@ class WAV(base.FileModel):
             wave_stream.setframerate(self.header.framerate)
             wave_stream.writeframesraw(samples)
 
-        return stream, ".wav"
+        return stream
+
+    def to_wav_file(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(self.to_wav_stream().getvalue())
 
     @classmethod
     def cli_decode_all(cls, config: GameConfig, pattern: str = "**/*.wav") -> None:
-        qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
+        encode_qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
 
         for src_path, src_dir, decoded_dir, encoded_dir in chain(
             (
@@ -78,11 +82,10 @@ class WAV(base.FileModel):
 
             wav_model = cls.model_validate_file(src_path)
 
-            decoded_path.parent.mkdir(parents=True, exist_ok=True)
-            decoded_path.write_bytes(wav_model.model_dump_stream()[0].getvalue())
+            wav_model.to_wav_file(decoded_path)
             typer.secho(f"Created: {decoded_path.as_posix()}", fg=typer.colors.GREEN)
 
-            qsc_model.content.statements.append(
+            encode_qsc_model.content.statements.append(
                 qsc.ExprStatement(
                     expression=qsc.Call(
                         function="ConvertSoundFile",
@@ -96,8 +99,7 @@ class WAV(base.FileModel):
             )
 
         encode_qsc_path = cls.get_encode_qsc_path(config)
-        encode_qsc_path.parent.mkdir(parents=True, exist_ok=True)
-        encode_qsc_path.write_bytes(qsc_model.model_dump_stream()[0].getvalue())
+        encode_qsc_model.to_file(encode_qsc_path)
         typer.secho(f"QSC script saved: {encode_qsc_path.as_posix()}", fg=typer.colors.YELLOW)
 
     # noinspection DuplicatedCode

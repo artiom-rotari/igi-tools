@@ -112,11 +112,11 @@ def dump_resources(ctx: typer.Context):
             )
         )
 
-        script_path = ctx.obj.igi1.work_dir / "script.qsc"
-        script_path.write_bytes(qsc_model.model_dump_stream()[0].getvalue())
+        qsc_path = ctx.obj.igi1.work_dir / "script.qsc"
+        qsc_model.to_file(qsc_path)
 
         result = subprocess.run(
-            [ctx.obj.igi1.gconv_path.absolute().as_posix(), script_path.absolute().as_posix()],
+            [ctx.obj.igi1.gconv_path.absolute().as_posix(), qsc_path.absolute().as_posix()],
             cwd=encoded_path.parent.absolute().as_posix(),
             stdout=subprocess.PIPE,
             check=False,
