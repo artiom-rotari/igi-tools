@@ -42,3 +42,13 @@ def decode_all_wav(ctx: typer.Context, pattern: str = "**/*.wav") -> None:
 @igi1_app.command(short_help="Execute script `{{scripts_dir}}/encode-all-wav.qsc`")
 def encode_all_wav(ctx: typer.Context) -> None:
     formats.WAV.cli_encode_all(config=ctx.obj.igi1)
+
+
+@igi1_app.command(short_help="Decode all .qvm files found in `{{game_dir`")
+def decode_all_qvm(ctx: typer.Context, pattern: str = "**/*.qvm") -> None:
+    formats.QVM.cli_decode_all(config=ctx.obj.igi1, pattern=pattern)
+
+
+@igi1_app.command(short_help="Execute script `{{scripts_dir}}/encode-all-qvm.qsc`")
+def encode_all_qvm(ctx: typer.Context) -> None:
+    formats.QVM.cli_encode_all(config=ctx.obj.igi1)

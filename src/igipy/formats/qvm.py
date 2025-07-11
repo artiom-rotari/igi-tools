@@ -1,11 +1,15 @@
+import subprocess
 from abc import ABC
 from functools import singledispatchmethod
 from io import BytesIO
+from pathlib import Path
 from struct import Struct, unpack
 from typing import Any, BinaryIO, ClassVar, Literal, Self
 
+import typer
 from pydantic import BaseModel, NonNegativeInt
 
+from ..config import GameConfig
 from . import FileModel, qsc
 
 
@@ -347,7 +351,7 @@ class QVM(FileModel):
         while next_address != stop_address:
             try:
                 instruction = self.instructions[next_address]
-                next_address = self.to_ast(instruction, stack=stack)
+                next_address = self.instruction_to_ast(instruction, stack=stack)
             except StopIteration:
                 break
 
@@ -370,37 +374,37 @@ class QVM(FileModel):
         return qsc.BlockStatement(statements=statements)
 
     @singledispatchmethod
-    def to_ast(self, instruction: Instruction, stack: qsc.Stack) -> int:
+    def instruction_to_ast(self, instruction: Instruction, stack: qsc.Stack) -> int:
         raise NotImplementedError(f"Not implemented for {type(instruction)}")
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: LiteralInstruction, stack: qsc.Stack) -> int:
         stack.push(qsc.Literal(value=instruction.value))
         return instruction.next_address
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: ConstantInstruction, stack: qsc.Stack) -> int:
         stack.push(qsc.Literal(value=instruction.value))
         return instruction.next_address
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: StringInstruction, stack: qsc.Stack) -> int:
         stack.push(qsc.Literal(value=self.strings[instruction.value]))
         return instruction.next_address
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: VariableInstruction, stack: qsc.Stack) -> int:
         stack.push(qsc.Variable(name=self.variables[instruction.value]))
         return instruction.next_address
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: UnaryOpInstruction, stack: qsc.Stack) -> int:
         operand = stack.pop_expression()
         node = qsc.UnaryOp(operator=qsc.UnaryOp.Operator(instruction.operator), operand=operand)
         stack.push(node)
         return instruction.next_address
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: BinaryOpInstruction, stack: qsc.Stack) -> int:
         right = stack.pop_expression()
         left = stack.pop_expression()
@@ -409,19 +413,19 @@ class QVM(FileModel):
         return instruction.next_address
 
     # noinspection PyUnusedLocal
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: POP, stack: qsc.Stack) -> int:  # noqa: ARG002
         return instruction.next_address
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: BRK, stack: qsc.Stack) -> int:  # noqa: ARG002
         raise StopIteration
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: BRA, stack: qsc.Stack) -> int:  # noqa: ARG002
         raise StopIteration
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: CALL, stack: qsc.Stack) -> int:
         function: qsc.Variable = stack.pop_variable()
         arguments: list[qsc.Expression] = []
@@ -439,7 +443,7 @@ class QVM(FileModel):
 
         return next_address  # noqa: RET504
 
-    @to_ast.register
+    @instruction_to_ast.register
     def _(self, instruction: BF, stack: qsc.Stack) -> int:
         condition = stack.pop_expression()
         then_block = self.rebuild_block(next_address=instruction.next_address, stop_address=None)
@@ -467,3 +471,58 @@ class QVM(FileModel):
         stack.push(node)
 
         return next_address
+
+    @classmethod
+    def cli_decode_all(cls, config: GameConfig, pattern: str = "**/*.qvm") -> None:
+        qsc_model = qsc.QSC(content=qsc.BlockStatement(statements=[]))
+
+        for src_path in config.game_dir.glob(pattern):
+            if not src_path.is_file(follow_symlinks=False):
+                continue
+
+            decoded_path = config.decoded_dir / src_path.relative_to(config.game_dir).with_suffix(".qsc")
+
+            qvm_model = cls.model_validate_file(src_path)
+
+            decoded_path.parent.mkdir(parents=True, exist_ok=True)
+            decoded_path.write_bytes(qvm_model.model_dump_stream()[0].getvalue())
+            typer.secho(f"Created {decoded_path.as_posix()}", fg=typer.colors.GREEN)
+
+            qsc_model.content.statements.append(
+                qsc.ExprStatement(
+                    expression=qsc.Call(
+                        function="CompileScript",
+                        arguments=[
+                            qsc.Literal(value=decoded_path.relative_to(config.work_dir).as_posix()),
+                        ],
+                    )
+                )
+            )
+
+        encode_qsc_path = cls.get_encode_qsc_path(config)
+        encode_qsc_path.parent.mkdir(parents=True, exist_ok=True)
+        encode_qsc_path.write_bytes(qsc_model.model_dump_stream()[0].getvalue())
+        typer.secho(f"QSC script saved: {encode_qsc_path.as_posix()}", fg=typer.colors.YELLOW)
+
+    # noinspection DuplicatedCode
+    @classmethod
+    def cli_encode_all(cls, config: GameConfig, **kwargs: dict) -> None:  # noqa: ARG003
+        encode_qsc_path = cls.get_encode_qsc_path(config)
+
+        if not encode_qsc_path.is_file(follow_symlinks=False):
+            typer.secho(f"File not found: {encode_qsc_path.as_posix()}", fg=typer.colors.RED)
+
+        subprocess.run(
+            [config.gconv.absolute().as_posix(), encode_qsc_path.relative_to(config.work_dir).as_posix()],
+            cwd=config.work_dir.absolute().as_posix(),
+            check=False,
+        )
+
+        for src_path in config.decoded_dir.glob("**/*.qvm"):
+            dst_path = config.build_dir / src_path.relative_to(config.decoded_dir)
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            src_path.replace(dst_path)
+
+    @classmethod
+    def get_encode_qsc_path(cls, config: GameConfig) -> Path:
+        return config.scripts_dir / "encode-all-qvm.qsc"
