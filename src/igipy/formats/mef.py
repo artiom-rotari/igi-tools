@@ -6,6 +6,7 @@ from typing import ClassVar, Literal, Self
 
 from pydantic import BaseModel, Field, NonNegativeInt, model_validator
 
+from igipy.config import GameConfig
 from igipy.formats import ilff
 from igipy.formats.base import StructModel
 
@@ -593,7 +594,6 @@ class MEFItem(BaseModel):
     hpsc: HPSCChunk
 
 
-# noinspection DuplicatedCode
 class MEF(ilff.ILFF):
     chunk_mapping: ClassVar[dict[bytes, type[ilff.Chunk]]] = {
         b"HSEM": HSEMChunk,
@@ -706,12 +706,14 @@ class MEF(ilff.ILFF):
                 raise ValueError("hsmc chunk content length does not match items count")
 
             for i in range(len(instance.hsmc.content)):
+                # noinspection DuplicatedCode
                 if instance.hsmc.content[i].ecfc_length != len(instance.items[i].ecfc.content):
                     raise ValueError(f"hsmc item {i} does not match ecfc {i} items count")
 
                 if instance.hsmc.content[i].xtvc_length != len(instance.items[i].xtvc.content):
                     raise ValueError(f"hsmc item {i} does not match xtvc {i} items count")
 
+                # noinspection DuplicatedCode
                 if instance.hsmc.content[i].tamc_length != len(instance.items[i].tamc.content):
                     raise ValueError(f"hsmc item {i} does not match tamc {i} items count")
 
@@ -719,3 +721,11 @@ class MEF(ilff.ILFF):
                     raise ValueError(f"hsmc item {i} does not match hpsc {i} items count")
 
         return instance
+
+    @classmethod
+    def cli_decode_all(cls, config: GameConfig, pattern: str) -> None:
+        raise NotImplementedError
+
+    @classmethod
+    def cli_encode_all(cls, config: GameConfig, **kwargs: dict) -> None:
+        raise NotImplementedError

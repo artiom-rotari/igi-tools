@@ -1,8 +1,10 @@
-# RES Files
+# RES Format
 
 **RES** files are archive files that can contain other files or text. Some RES files store game assets (like textures), while others hold translated text for localization.
 
----
+## Commands
+
+...
 
 ## Creating a RES file with files
 
@@ -82,10 +84,6 @@ Original:
 
 Use this final version in your `.qsc` script.
 
-
-## `igipy` commands
-
-...
 
 ## Resources Dump
 

@@ -1,3 +1,4 @@
+from abc import ABC
 from io import BytesIO
 from struct import Struct
 from typing import ClassVar, Literal, Self
@@ -59,7 +60,7 @@ class ILFFHeader(ChunkHeader):
     fourcc: Literal[b"ILFF"] = Field(description="Chunk signature")
 
 
-class ILFF(FileModel):
+class ILFF(FileModel, ABC):
     chunk_mapping: ClassVar[dict[bytes, type[Chunk]]] = {}
 
     header: ILFFHeader
